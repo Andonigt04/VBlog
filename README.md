@@ -1,2 +1,2 @@
-# VBlog
-Not for official use
+# VBlog (Vulnerability Blog)
+Not for official use. 
