@@ -27,7 +27,6 @@ FastApi:
   - /posts
   - /posts/{id} (créate, edit, delete)
 
-FastApi:
 - /api(res -> json, status code):
   - /login
   - /signup
