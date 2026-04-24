@@ -1,9 +1,18 @@
 <?php
 
+use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('home');
+});
+
+Route::get('/login', function () {
+    return view('users.login');
+});
+
+Route::post('/signup', function () {
+    return view('users.signup');
 });
 
 Route::prefix('users')->group(function () {
@@ -25,9 +34,7 @@ Route::prefix('users')->group(function () {
 });
 
 Route::prefix('posts')->group(function () { 
-    Route::get('/', function () {
-        return view('posts.index');
-    });
+    Route::get('/', [PostController::class, 'index']);
 
     Route::middleware('auth')->group(function () {
         Route::get('create', function () {
