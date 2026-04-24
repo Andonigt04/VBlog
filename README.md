@@ -38,15 +38,19 @@ FastApi:
   - /status -> [code, {UP/DOWN, dbConnection, timestamp}]
 
 Docker:
+
  - contenedor laravel/web
  - segundo FastAPI/api
  - tercer contenedor para db (por defecto tiene que tener contenido para no estar vacio al hacer docker compose up --build)
  - volumen para imagenes (imagenes si da tiempo o apetece)
 
-Objects:
- - User(id, name, role)
- - Post(id, title, tags[], text, userId, created_at, updated_at)
- - Comments(id, postId, text(imagenes renderizables por url como en los posts), userId, created_at, updated_at)
+Tables:
+
+ - User(id, name, email, password, role)
+ - Post(id, title, tags[], context, userId, timestamps)
+ - Comments(id, post_id, user_id, context(imagenes renderizables por url como en los posts), timestamps)
+
 Enums:
+
  - tags[pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas]
  - role[client, editor, admin]

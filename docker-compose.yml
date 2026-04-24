@@ -9,7 +9,7 @@ services:
       - ./storage/logs:/var/www/html/storage/logs # Si Nginx necesita logs
     depends_on:
      - laravel
-  laraevl:
+  laravel:
     build:
       context:
       dockerfile: Dockerfile
@@ -19,7 +19,13 @@ services:
       postgresql
 
   postgresql:
-    image: postgresql:lastest
+    image: postgres:latest
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: laravel
+      POSTGRES_ROOT_PASSWORD: "uireh34t34$GTG·%PG·$T*·P·*WP"
+      POSTGRES_DB: vblog
+      POSTGRES_USER: vblog_adm
+      POSTGRES_PASSWORD: "%$iwuehfuiwhl|#~qgul!"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
