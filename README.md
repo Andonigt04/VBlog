@@ -53,4 +53,4 @@ Tables:
 Enums:
 
  - tags[pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas]
- - role[client, editor, admin]
+ - role[client, author, admin]

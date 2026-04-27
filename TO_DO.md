@@ -1,3 +1,5 @@
+users auto role asign
+
 users/edit
 users/delete
 users/index

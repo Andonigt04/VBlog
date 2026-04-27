@@ -18,6 +18,8 @@ class UsersSeeder extends Seeder
             'email' => 'adm01@vblog.local',
             'password' => \Illuminate\Support\Facades\Hash::make('adm01local'),
             'remember_token' => \Illuminate\Support\Str::random(10),
+            'email_verified_at' => now(),
+            'role' => 'admin',
         ]);
     }
 }
