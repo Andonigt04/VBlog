@@ -3,6 +3,7 @@
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -44,8 +45,17 @@ Route::prefix('posts')->group(function () {
     Route::get('/', function () {
         return view('posts.index')->with('posts', PostController::index(new Request()));
     })->name('posts.index');
-    Route::get('/{id}', function ($id) {
-        return view('posts.show')->with('post', PostController::show($id));
+    Route::get('/{id}', function (Request $request, $id) {
+        $post = PostController::show($request, $id);
+
+        if ($post) {
+            $comments = CommentController::index($request, $id);
+        } else {
+            $comments = collect();
+        }
+
+        if (!$post) abort(404);
+        return view('posts.show')->with('post', $post)->with('comments', $comments);
     })->name('posts.show');
 
     Route::middleware('auth')->group(function () {
@@ -63,7 +73,7 @@ Route::prefix('posts')->group(function () {
 
 Route::prefix('comments')->group(function () {
     Route::get('/', function () {
-        return view('comments.index')->with('posts', CommentController::index(new Request()));
+        return view('comments.index')->with('comments', CommentController::index(new Request()));
     })->name('comments.index');
 
     Route::middleware('auth')->group(function () {

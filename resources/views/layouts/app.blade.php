@@ -7,10 +7,10 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
-    @extends('partials.header')
+    @include('partials.header')
 
     @yield('content')
 
-    @extends('partials.footer')
+    @include('partials.footer')
 </body>
 </html>

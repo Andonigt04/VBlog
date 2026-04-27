@@ -10,7 +10,8 @@ class PostController extends Controller
 {
     public static function index(Request $request)
     {
-        try {
+        try
+        {
             $posts = Post::orderBy("created_at", "desc")->paginate(50);
 
             // Si la petición espera JSON (API)
@@ -41,21 +42,27 @@ class PostController extends Controller
         }
     }
 
-    public static function show($id)
+    public static function show(Request $request, $id)
     {
-        try
-        {
+        try {
             $post = Post::findOrFail($id);
-
-            return response()->json([
-                'status' => 200,
-                'post' => $post,
-            ]);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 200,
+                    'post' => $post,
+                ]);
+            }
+            // Para la vista, retorna el modelo
+            return $post;
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Error fetching post',
-            ], 500);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Error fetching post',
+                ], 500);
+            }
+            // Para la vista, retorna null
+            return null;
         }
     }
 

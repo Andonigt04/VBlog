@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Home')
-
 @section('content')
 <div class="grid grid-cols-3 grid-flow-row">
     <div class="bg-gray-200 p-4">

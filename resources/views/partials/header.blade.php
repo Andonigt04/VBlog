@@ -1,15 +1,14 @@
 <div>
-    @yield('title')
-
     <div class="bg-zinc-900 text-zinc-200 p-4 flex items-center justify-between">
         <a href="{{ route('home') }}" class="text-lg font-bold">{{ config('app.name') }}</a>
-        <nav>
+        <nav class="flex items-center space-x-6">
             <ul class="flex space-x-4">
-                <li><a href="{{ route('home') }}" class="hover:text-white transition">Home</a></li>
-                <li><a href="{{ route('posts.index') }}" class="hover:text-white transition">Posts</a></li>
-                <li><a href="{{ route('users.index') }}" class="hover:text-white transition">Users</a></li>
+                <li><a href="{{ route('posts.index', ['category' => 'vulnerabilities']) }}" class="hover:text-white transition">Vulnerabilities</a></li>
+                <li><a href="{{ route('posts.index', ['category' => 'analysis']) }}" class="hover:text-white transition">Analysis</a></li>
+                <li><a href="{{ route('posts.index', ['category' => 'tools']) }}" class="hover:text-white transition">Tools</a></li>
+                <li><a href="{{ route('posts.index', ['category' => 'good-practices']) }}" class="hover:text-white transition">Good Practices</a></li>
             </ul>
-            <ul>
+            <ul class="flex flex-row space-x-4">
                 <li><a href="{{ route('login') }}" class="hover:text-white transition">Login</a></li>
                 <li><a href="{{ route('signup') }}" class="hover:text-white transition">Signup</a></li>
             </ul>

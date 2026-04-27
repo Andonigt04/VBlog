@@ -8,31 +8,40 @@ use Illuminate\Routing\Controller;
 
 class CommentController extends Controller
 {
-    public static function index()
+    public static function index(Request $request, int $id)
     {
-        try
-        {
-            $comments = Comment::orderBy("created_at","desc")->paginate(50);
+        try {
+            $comments = Comment::where('post_id', $id)->orderBy("created_at", "desc")->paginate(50);
 
-            return response()->json([
-                'status' => 200,
-                'comments' => $comments->items(),
-                'pagination' => [
-                    'current_page' => $comments->currentPage(),
-                    'last_page' => $comments->lastPage(),
-                    'per_page' => $comments->perPage(),
-                    'total' => $comments->total(),
-                ]
-            ]);
+            // Si la petición espera JSON (API)
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 200,
+                    'comments' => $comments->items(),
+                    'pagination' => [
+                        'current_page' => $comments->currentPage(),
+                        'last_page' => $comments->lastPage(),
+                        'per_page' => $comments->perPage(),
+                        'total' => $comments->total(),
+                    ]
+                ]);
+            }
+
+            // Si es llamada desde una vista, retorna la colección paginada
+            return $comments;
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Error fetching comments',
-            ], 500);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Error fetching comments',
+                ], 500);
+            }
+            // Si es desde la vista, retorna colección vacía
+            return collect();
         }
     }
 
-    public function show($id)
+    public static function show($id)
     {
         try
         {
