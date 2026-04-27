@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
+    public static function index(Request $request)
     {
-        $users = User::orderBy('created_at', 'desc')->paginate(50);
-        // Si la petición es a la API, devolver solo datos JSON planos
-        if ($request->is('api/*') || $request->wantsJson()) {
+        try {
+            $users = User::orderBy('created_at', 'desc')->paginate(50);
+            
             return response()->json([
                 'status' => 200,
                 'users' => $users->items(),
@@ -25,33 +25,125 @@ class UserController extends Controller
                     'total' => $users->total(),
                 ]
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching users',
+            ], 500);
         }
-
-        return view('users.index', ['users' => $users]);
     }
 
-    public function update(Request $request)
+    public function show(Request $request, $id)
     {
-        // Handle user update logic here
+        try
+        {
+            $user = User::findOrFail($id);
+
+            return response()->json([
+                'status' => 200,
+                'user' => $user,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching user',
+            ], 500);
+        }
     }
 
-    public function destroy(Request $request)
+    public function update(Request $request, $id)
     {
-        // Handle user deletion logic here
+        $user = User::findOrFail($id);
+
+        try
+        {
+            $user->update($request->all());
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'User updated successfully',
+                'user' => $user,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error updating user',
+            ], 500);
+        }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'User deleted successfully',
+        ]);
     }
 
     public function login(Request $request)
     {
-        return view('users.login');
+        try
+        {
+            $user = User::findOrFail($request->user_id);
+
+            $user->login($request->password);
+
+            Auth::login($user, true);
+            
+            return response()->json([
+                'status' => 200,
+                'message' => 'User logged in successfully',
+                'user' => $user,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error logging in user',
+            ], 500);
+        }
     }
 
     public function signup(Request $request)
     {
-        // Handle user signup logic here
+        try
+        {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
+
+            return response()->json([
+                'status' => 201,
+                'message' => 'User created successfully',
+                'user' => $user,
+            ], 201)->redirect('/login');
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error creating user',
+            ], 500);
+        }
     }
 
     public function logout(Request $request)
     {
-        // Handle user logout logic here
+        try
+        {
+            Auth::logout();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'User logged out successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error logging out user',
+            ], 500);
+        }
     }
 }

@@ -2,38 +2,89 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class CommentController extends Controller
 {
-    public function index()
+    public static function index()
     {
-        return view('posts.index');
-    }
+        try
+        {
+            $comments = Comment::orderBy("created_at","desc")->paginate(50);
 
-    public function store(Request $request)
-    {
-        // Logic to store a new post
+            return response()->json([
+                'status' => 200,
+                'comments' => $comments->items(),
+                'pagination' => [
+                    'current_page' => $comments->currentPage(),
+                    'last_page' => $comments->lastPage(),
+                    'per_page' => $comments->perPage(),
+                    'total' => $comments->total(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching comments',
+            ], 500);
+        }
     }
 
     public function show($id)
     {
-        // Logic to show a specific post
-    }
+        try
+        {
+            $comment = Comment::findOrFail($id);
 
-    public function edit($id)
-    {
-        // Logic to edit a specific post
+            return response()->json([
+                'status' => 200,
+                'comment' => $comment,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching comment',
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
     {
-        // Logic to update a specific post
+        try
+        {
+            $comment = Comment::findOrFail($id);
+            $comment->update($request->all());
+
+            return response()->json([
+                'status' => 200,
+                'comment' => $comment,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error updating comment',
+            ], 500);
+        }
     }
 
     public function destroy($id)
     {
-        // Logic to delete a specific post
+        try
+        {
+            $comment = Comment::findOrFail($id);
+            $comment->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Comment deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error deleting comment',
+            ], 500);
+        }
     }
 }

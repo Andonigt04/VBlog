@@ -12,6 +12,7 @@ class PostsSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        // Genera 50 posts aleatorios usando el factory
+        \App\Models\Post::factory()->count(50)->create();
     }
 }

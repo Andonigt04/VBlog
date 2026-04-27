@@ -8,48 +8,92 @@ use Illuminate\Routing\Controller;
 
 class PostController extends Controller
 {
-    public function index(Request $request)
+    public static function index(Request $request)
     {
-        $posts = Post::orderBy('created_at', 'desc')->paginate(50);
-        // Si la petición es a la API, devolver solo datos JSON planos
-        if ($request->is('api/*') || $request->wantsJson()) {
-            return response()->json([
-                'status' => 200,
-                'posts' => $posts->items(),
-                'pagination' => [
-                    'current_page' => $posts->currentPage(),
-                    'last_page' => $posts->lastPage(),
-                    'per_page' => $posts->perPage(),
-                    'total' => $posts->total(),
-                ]
-            ]);
-        }
-        // Si es petición web, devolver la vista con paginación
-        return view('posts.index', ['posts' => $posts]);
-    }
+        try {
+            $posts = Post::orderBy("created_at", "desc")->paginate(50);
 
-    public function store(Request $request)
-    {
-        // Logic to store a new post
+            // Si la petición espera JSON (API)
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 200,
+                    'posts' => $posts->items(),
+                    'pagination' => [
+                        'current_page' => $posts->currentPage(),
+                        'last_page' => $posts->lastPage(),
+                        'per_page' => $posts->perPage(),
+                        'total' => $posts->total(),
+                    ]
+                ]);
+            }
+
+            // Si es llamada desde una vista, retorna la colección paginada
+            return $posts;
+        } catch (\Exception $e) {
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Error fetching posts',
+                ], 500);
+            }
+            // Si es desde la vista, retorna colección vacía
+            return collect();
+        }
     }
 
     public function show($id)
     {
-        // Logic to show a specific post
-    }
+        try
+        {
+            $post = Post::findOrFail($id);
 
-    public function edit($id)
-    {
-        // Logic to edit a specific post
+            return response()->json([
+                'status' => 200,
+                'post' => $post,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching post',
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
     {
-        // Logic to update a specific post
+        try
+        {
+            $post = Post::findOrFail($id);
+            $post->update($request->all());
+
+            return response()->json([
+                'status' => 200,
+                'post' => $post,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error updating post',
+            ], 500);
+        }
     }
 
     public function destroy($id)
     {
-        // Logic to delete a specific post
+        try
+        {
+            $post = Post::findOrFail($id);
+            $post->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Post deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error deleting post',
+            ], 500);
+        }
     }
 }
