@@ -1,4 +1,4 @@
-users auto role asign
+*db setup
 
 users/edit
 users/delete

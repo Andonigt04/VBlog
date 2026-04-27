@@ -2,6 +2,8 @@
 
 @section('title', 'Perfila')
 
+@auth(Auth::user()->id === $user->id)
+
 @section('content')
     <div class="bg-zinc-800 rounded-lg shadow-lg overflow-hidden">
         <div class="overflow-x-auto">
@@ -31,3 +33,5 @@
         </div>
     </div>
 @endsection
+
+@endauth
