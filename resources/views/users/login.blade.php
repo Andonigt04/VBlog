@@ -1,3 +1,11 @@
+@extends('layouts.app')
+
+@section('title', 'Login')
+
+@section('content')
+@auth
+    {{ redirect((Auth::user()->role === "admin") ? '/dashboard' : '/') }}
+@endauth
 <div class="min-h-[80vh] flex items-center justify-center absolute z-10 top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 backdrop-blur-sm">
     <div class="bg-zinc-900 p-8 rounded-lg shadow-lg w-full max-w-md border border-zinc-700/50">
         <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
@@ -30,3 +38,4 @@
         </form>
     </div>
 </div>
+@endsection

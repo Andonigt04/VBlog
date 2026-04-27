@@ -88,25 +88,25 @@ class UserController extends Controller
         try {
             $user = User::where('email', $request->email)->firstOrFail();
             $password = $request->password ?? $request->passkey;
-            
+
             if (Hash::check($password, $user->password)) {
                 Auth::login($user, true);
                 return response()->json([
                     'status' => 200,
                     'message' => 'User logged in successfully',
                     'user' => $user,
-                ]);
+                ])->header('Location', (Auth::user()->role === "admin") ? '/dashboard' : '/');
             } else {
                 return response()->json([
                     'status' => 401,
                     'message' => 'Invalid credentials',
-                ], 401);
+                ], 401)->header('Location', '/login');
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Error logging in user',
-            ], 500);
+            ], 500)->header('Location', '/login');
         }
     }
 
@@ -124,12 +124,12 @@ class UserController extends Controller
                 'status' => 201,
                 'message' => 'User created successfully',
                 'user' => $user,
-            ], 201)->redirect('/login');
+            ], 201)->header('Location', '/login');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Error creating user',
-            ], 500);
+            ], 500)->header('Location', '/signup');
         }
     }
 
@@ -142,12 +142,12 @@ class UserController extends Controller
             return response()->json([
                 'status' => 200,
                 'message' => 'User logged out successfully',
-            ]);
+            ])->header('Location', '/login');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Error logging out user',
-            ], 500);
+            ], 500)->header('Location', '/login');
         }
     }
 }

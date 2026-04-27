@@ -18,6 +18,10 @@ Route::get('/signup', function () {
     return view('users.signup');
 })->name('signup');
 
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware('auth')->name('dashboard');
+
 Route::prefix('users')->group(function () {
     Route::get('/', function () {
         return view('users.index')->with('users', UserController::index(new Request()));

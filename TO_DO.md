@@ -1,8 +1,8 @@
 users/edit
 users/delete
-users/create
+users/index
 login
-signup
+*signup
 
 posts/edit
 posts/delete
