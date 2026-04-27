@@ -44,6 +44,9 @@ Route::prefix('posts')->group(function () {
     Route::get('/', function () {
         return view('posts.index')->with('posts', PostController::index(new Request()));
     })->name('posts.index');
+    Route::get('/{id}', function ($id) {
+        return view('posts.show')->with('post', PostController::show($id));
+    })->name('posts.show');
 
     Route::middleware('auth')->group(function () {
         Route::get('create', function () {

@@ -41,7 +41,7 @@ class PostController extends Controller
         }
     }
 
-    public function show($id)
+    public static function show($id)
     {
         try
         {

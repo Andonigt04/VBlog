@@ -17,13 +17,13 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-700">
                     @foreach ($posts as $post)
-                        <tr class="hover:bg-zinc-700/50 transition-colors">
+                        <tr class="hover:bg-zinc-700/50 transition-colors" ondblclick="{{ route('posts.show', $post->id) }}">
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-400">{{ $post->id }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-200">{{ $post->title }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-400">{{ $post->content }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-400">{{ $post->created_at }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-400">
-                                <a href="{{ route('posts.edit', $post->id) }}" class="text-blue-500 hover:text-blue-700">Edit</a>
+                                <a href="{{ route('posts.edit', $post->id) }}" class="text-blue-500 hover:text-blue-700 pr-5">Edit</a>
                                 <form action="{{ route('posts.delete', $post->id) }}" method="POST" class="inline-block">
                                     @csrf
                                     @method('DELETE')

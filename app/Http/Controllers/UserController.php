@@ -86,26 +86,32 @@ class UserController extends Controller
     public function login(Request $request)
     {
         try {
-            $user = User::where('email', $request->email)->firstOrFail();
+            $user = User::where('email', $request->email)->first();
             $password = $request->password ?? $request->passkey;
 
-            if (Hash::check($password, $user->password)) {
-                Auth::login($user, true);
-                if ($request->wantsJson() || $request->is('api/*')) {
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'User logged in successfully',
-                        'user' => $user->name,
-                    ]);
-                }
-            } else {
+            if (!$user || !Hash::check($password, $user->password)) {
                 if ($request->wantsJson() || $request->is('api/*')) {
                     return response()->json([
                         'status' => 401,
-                        'message' => 'Invalid credentials',
+                        'message' => 'Credenciales incorrectas',
                     ], 401);
                 }
+                return back()->withErrors(['email' => 'Credenciales incorrectas']);
             }
+
+            Auth::login($user, true);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                // Redirigir según rol
+                $redirect = ($user->role === 'admin') ? '/dashboard' : '/';
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Login correcto',
+                    'user' => $user->name,
+                    'redirect' => $redirect,
+                ]);
+            }
+            // Web
+            return redirect(($user->role === 'admin') ? '/dashboard' : '/');
         } catch (\Exception $e) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -113,6 +119,7 @@ class UserController extends Controller
                     'message' => 'Error logging in user',
                 ], 500);
             }
+            return back()->withErrors(['email' => 'Error logging in user']);
         }
     }
 
