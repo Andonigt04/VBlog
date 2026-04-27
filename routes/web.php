@@ -26,6 +26,10 @@ Route::get('/dashboard', function (Request $request) {
     return view('dashboard');
 })->middleware('auth')->name('dashboard');
 
+Route::get('/profile', function () {
+    return view('users.profile')->with('user', UserController::profile(new Request()));
+})->middleware('auth')->name('users.profile');
+
 Route::prefix('users')->group(function () {
     Route::get('/', function () {
         return view('users.index')->with('users', UserController::index(new Request()));

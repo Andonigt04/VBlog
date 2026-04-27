@@ -8,10 +8,18 @@
                 <li><a href="{{ route('posts.index', ['category' => 'tools']) }}" class="hover:text-white transition">Tools</a></li>
                 <li><a href="{{ route('posts.index', ['category' => 'good-practices']) }}" class="hover:text-white transition">Good Practices</a></li>
             </ul>
-            <ul class="flex flex-row space-x-4">
-                <li><a href="{{ route('login') }}" class="hover:text-white transition">Login</a></li>
-                <li><a href="{{ route('signup') }}" class="hover:text-white transition">Signup</a></li>
-            </ul>
+            @auth
+                <ul class="flex flex-row space-x-4">
+                    <li><a href="{{ route('login') }}" class="hover:text-white transition">Login</a></li>
+                    <li><a href="{{ route('signup') }}" class="hover:text-white transition">Signup</a></li>
+                </ul>
+                @else
+
+                <<ul class="flex flex-row space-x-4">
+                    <li><a href="{{ route('users.profile') }}" class="hover:text-white transition">Profile</a></li>
+                    <li><a href="{{ url('logout') }}" class="hover:text-white transition">Logout</a></li>
+                </ul>
+            @endauth
         </nav>
     </div>
 </div>

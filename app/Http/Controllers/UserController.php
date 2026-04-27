@@ -14,7 +14,7 @@ class UserController extends Controller
     {
         try {
             $users = User::orderBy('created_at', 'desc')->paginate(50);
-            
+
             return response()->json([
                 'status' => 200,
                 'users' => $users->items(),
@@ -99,6 +99,16 @@ class UserController extends Controller
                 return back()->withErrors(['email' => 'Credenciales incorrectas']);
             }
 
+            if (!$user) {
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'status' => 404,
+                        'message' => 'Usuario no encontrado',
+                    ], 404);
+                }
+                return back()->withErrors(['email' => 'Usuario no encontrado']);
+            }
+
             Auth::login($user, true);
             if ($request->wantsJson() || $request->is('api/*')) {
                 // Redirigir según rol
@@ -148,6 +158,13 @@ class UserController extends Controller
     public function logout(Request $request)
     {
         try {
+
+            if (($request->wantsJson() || $request->is('api/*')) && !Auth::check()) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'No user is currently logged in',
+                ], 401);
+            }
             Auth::logout();
             return response()->json([
                 'status' => 200,

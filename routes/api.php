@@ -16,6 +16,7 @@ Route::get('/status', function () {
 
 Route::post('/signup', [UserController::class, 'signup']);
 Route::post('/login', [UserController::class, 'login']);
+Route::get('/logout', [UserController::class, 'logout']);
 
 Route::get('/me', [UserController::class, 'me'])->middleware('auth');
 

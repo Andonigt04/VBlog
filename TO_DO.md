@@ -7,6 +7,7 @@ users/index
 /dashboard
 login
 *signup
+logout
 
 posts/edit
 posts/delete
