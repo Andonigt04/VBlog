@@ -91,29 +91,34 @@ class UserController extends Controller
 
             if (Hash::check($password, $user->password)) {
                 Auth::login($user, true);
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'User logged in successfully',
-                    'user' => $user,
-                ])->header('Location', (Auth::user()->role === "admin") ? '/dashboard' : '/');
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'User logged in successfully',
+                        'user' => $user->name,
+                    ])->redirect((Auth::user()->role === "admin") ? '/dashboard' : '/');
+                }
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Invalid credentials',
-                ], 401)->header('Location', '/login');
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'status' => 401,
+                        'message' => 'Invalid credentials',
+                    ], 401)->redirect()->route('login')->withErrors(['email' => 'Credenciales incorrectas']);
+                }
             }
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Error logging in user',
-            ], 500)->header('Location', '/login');
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Error logging in user',
+                ], 500)->redirect()->route('login')->withErrors(['email' => 'Error en el login']);
+            }
         }
     }
 
     public function signup(Request $request)
     {
-        try
-        {
+        try {
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -123,31 +128,29 @@ class UserController extends Controller
             return response()->json([
                 'status' => 201,
                 'message' => 'User created successfully',
-                'user' => $user,
-            ], 201)->header('Location', '/login');
+                'user' => $user->name,
+            ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Error creating user',
-            ], 500)->header('Location', '/signup');
+            ], 500);
         }
     }
 
     public function logout(Request $request)
     {
-        try
-        {
+        try {
             Auth::logout();
-
             return response()->json([
                 'status' => 200,
                 'message' => 'User logged out successfully',
-            ])->header('Location', '/login');
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Error logging out user',
-            ], 500)->header('Location', '/login');
+            ], 500);
         }
     }
 }

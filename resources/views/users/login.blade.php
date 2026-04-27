@@ -10,7 +10,7 @@
     <div class="bg-zinc-900 p-8 rounded-lg shadow-lg w-full max-w-md border border-zinc-700/50">
         <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
         
-        <form method="GET" action="{{ url('/api/login') }}" class="space-y-4">
+        <form method="POST" action="{{ url('/api/login') }}" class="space-y-4">
             <div>
                 <label for="email" class="block text-sm font-medium mb-2">Email</label>
                 <input type="email" name="email" id="email" required 
