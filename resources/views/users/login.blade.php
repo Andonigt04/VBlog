@@ -31,7 +31,7 @@
             </button>
         </form>
         <script type="module">
-        import { apiLogin } from 'resources/js/app.js';
+        import { apiLogin } from '/resources/js/app.js';
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('loginForm');
             const errorDiv = document.getElementById('loginError');
