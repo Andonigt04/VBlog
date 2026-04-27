@@ -18,7 +18,10 @@ Route::get('/signup', function () {
     return view('users.signup');
 })->name('signup');
 
-Route::get('/dashboard', function () {
+Route::get('/dashboard', function (Request $request) {
+    if ($request->getHost() !== 'dashboard.vblog.local') {
+        abort(404);
+    }
     return view('dashboard');
 })->middleware('auth')->name('dashboard');
 

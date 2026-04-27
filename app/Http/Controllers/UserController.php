@@ -96,14 +96,14 @@ class UserController extends Controller
                         'status' => 200,
                         'message' => 'User logged in successfully',
                         'user' => $user->name,
-                    ])->redirect((Auth::user()->role === "admin") ? '/dashboard' : '/');
+                    ]);
                 }
             } else {
                 if ($request->wantsJson() || $request->is('api/*')) {
                     return response()->json([
                         'status' => 401,
                         'message' => 'Invalid credentials',
-                    ], 401)->redirect()->route('login')->withErrors(['email' => 'Credenciales incorrectas']);
+                    ], 401);
                 }
             }
         } catch (\Exception $e) {
@@ -111,7 +111,7 @@ class UserController extends Controller
                 return response()->json([
                     'status' => 500,
                     'message' => 'Error logging in user',
-                ], 500)->redirect()->route('login')->withErrors(['email' => 'Error en el login']);
+                ], 500);
             }
         }
     }

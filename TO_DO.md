@@ -1,7 +1,7 @@
 users/edit
 users/delete
 users/index
-*login
+login
 *signup
 
 posts/edit
