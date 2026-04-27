@@ -72,7 +72,7 @@ class UserController extends Controller
         }
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy($id)
     {
         $user = User::findOrFail($id);
         $user->delete();
@@ -85,19 +85,23 @@ class UserController extends Controller
 
     public function login(Request $request)
     {
-        try
-        {
-            $user = User::findOrFail($request->user_id);
-
-            $user->login($request->password);
-
-            Auth::login($user, true);
+        try {
+            $user = User::where('email', $request->email)->firstOrFail();
+            $password = $request->password ?? $request->passkey;
             
-            return response()->json([
-                'status' => 200,
-                'message' => 'User logged in successfully',
-                'user' => $user,
-            ]);
+            if (Hash::check($password, $user->password)) {
+                Auth::login($user, true);
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'User logged in successfully',
+                    'user' => $user,
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Invalid credentials',
+                ], 401);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,

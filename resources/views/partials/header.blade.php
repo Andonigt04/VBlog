@@ -9,6 +9,10 @@
                 <li><a href="{{ route('posts.index') }}" class="hover:text-white transition">Posts</a></li>
                 <li><a href="{{ route('users.index') }}" class="hover:text-white transition">Users</a></li>
             </ul>
+            <ul>
+                <li><a href="{{ route('login') }}" class="hover:text-white transition">Login</a></li>
+                <li><a href="{{ route('signup') }}" class="hover:text-white transition">Signup</a></li>
+            </ul>
         </nav>
     </div>
 </div>

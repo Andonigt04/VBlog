@@ -3,7 +3,6 @@
         <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
         
         <form method="GET" action="{{ url('/api/login') }}" class="space-y-4">
-            @csrf
             <div>
                 <label for="email" class="block text-sm font-medium mb-2">Email</label>
                 <input type="email" name="email" id="email" required 
