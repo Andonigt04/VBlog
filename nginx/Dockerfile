@@ -1,10 +1,8 @@
 FROM nginx:alpine
 
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY conf.d/ /etc/nginx/conf.d/
+COPY . /etc/nginx/
 
-RUN chmod -R 755 /etc/nginx/conf.d && \
-    chmod 644 /etc/nginx/nginx.conf
+RUN chmod -R 755 /etc/nginx/
 
 EXPOSE 80
 

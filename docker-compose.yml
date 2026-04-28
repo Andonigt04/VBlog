@@ -2,15 +2,15 @@ services:
   nginx:
     image: nginx:alpine
     build:
-      context: nginx/
+      context: nginx
       dockerfile: Dockerfile
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      - .:/var/www/html
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./public:/var/www/html:ro
+      - ./nginx/server.conf:/etc/nginx/conf.d/default.conf
     depends_on:
      - laravel
   laravel:
@@ -20,7 +20,7 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./src:/var/www/html # Código fuente de Laravel
+      - .:/var/www/html
       - pgcontent:/var/www/html/storage
     depends_on:
       - postgresql
@@ -28,14 +28,14 @@ services:
   postgresql:
     image: postgres:latest
     environment:
-      POSTGRES_ROOT_PASSWORD: "uireh34t34$GTG·%PG·$T*·P·*WP"
+      POSTGRES_ROOT_PASSWORD: "uireh34t34"
       POSTGRES_DB: vblog
       POSTGRES_USER: vblog_adm
-      POSTGRES_PASSWORD: "uireh34t34$GTG·%PG·$T*·P·*WP"
+      POSTGRES_PASSWORD: "uireh34t34"
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
 
 volumes:
   pgdata:
