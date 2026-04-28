@@ -10,21 +10,24 @@ use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    public static function index(Request $request)
+    public static function index(Request $request, int $pages = 1)
     {
         try {
-            $users = User::orderBy('created_at', 'desc')->paginate(50);
+            $users = User::orderBy('created_at', 'desc')->paginate($pages);
 
-            return response()->json([
-                'status' => 200,
-                'users' => $users->items(),
-                'pagination' => [
-                    'current_page' => $users->currentPage(),
-                    'last_page' => $users->lastPage(),
-                    'per_page' => $users->perPage(),
-                    'total' => $users->total(),
-                ]
-            ]);
+             // Si la petición espera JSON (API)
+             if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 200,
+                    'users' => $users->items(),
+                    'pagination' => [
+                        'current_page' => $users->currentPage(),
+                        'last_page' => $users->lastPage(),
+                        'per_page' => $users->perPage(),
+                        'total' => $users->total(),
+                    ]
+                ]);
+             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
@@ -33,16 +36,18 @@ class UserController extends Controller
         }
     }
 
-    public static function show($id)
+    public static function show(Request $request, $id)
     {
         try
         {
             $user = User::findOrFail($id);
 
-            return response()->json([
-                'status' => 200,
-                'user' => $user,
-            ]);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => 200,
+                    'user' => $user,
+                ]);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
@@ -109,7 +114,7 @@ class UserController extends Controller
                 return back()->withErrors(['email' => 'Usuario no encontrado']);
             }
 
-            Auth::login($user, true);
+            Auth::guard('web')->login($user, true);
             if ($request->wantsJson() || $request->is('api/*')) {
                 // Redirigir según rol
                 if ($user->role === 'admin') {
@@ -158,21 +163,24 @@ class UserController extends Controller
         }
     }
 
-    public function logout(Request $request)
+    public function logout()
     {
         try {
 
-            if (($request->wantsJson() || $request->is('api/*')) && !Auth::check()) {
+            if (Auth::check()) {
+                Auth::logout();
+                url('login');
+                
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'No user is currently logged in',
-                ], 401);
+                    'status' => 200,
+                    'message' => 'User logged out successfully',
+                ]);
             }
-            Auth::logout();
+
             return response()->json([
-                'status' => 200,
-                'message' => 'User logged out successfully',
-            ]);
+                'status' => 401,
+                'message' => 'No user is currently logged in',
+            ], 401);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,

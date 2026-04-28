@@ -3,16 +3,14 @@
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
+use App\Models\Comment;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (Request $request) {
     return view('home');
-
-    if ($request->getHost() === 'dashboard.vblog.local') {
-        return redirect()->route('dashboard');
-    }
 })->name('home');
 
 Route::get('/login', function () {
@@ -28,10 +26,14 @@ Route::get('/dashboard', function (Request $request) {
     if ($request->getHost() !== 'vblog.local') {
         abort(404);
     }
+    $users = User::orderBy('created_at', 'desc')->paginate(10);
+    $posts = Post::orderBy('created_at', 'desc')->paginate(10);
+    $comments = Comment::orderBy('created_at', 'desc')->paginate(10);
+    return view('dashboard', compact('users', 'posts', 'comments'));
 })->middleware('auth')->name('dashboard');
 
 Route::get('/profile', function () {
-    return view('users.profile')->with('user', UserController::show(Auth::id()));
+    return view('users.profile')->with('user', User::find(Auth::id()));
 })->middleware('auth')->name('users.profile');
 
 Route::prefix('users')->group(function () {
@@ -51,7 +53,7 @@ Route::prefix('users')->group(function () {
 
 Route::prefix('posts')->group(function () {
     Route::get('/', function () {
-        return view('posts.index')->with('posts', PostController::index(new Request()));
+        return view('posts.index')->with('posts', PostController::index(new Request(), 50));
     })->name('posts.index');
     Route::get('/{id}', function (Request $request, $id) {
         $post = PostController::show($request, $id);

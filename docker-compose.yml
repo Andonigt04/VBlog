@@ -1,6 +1,9 @@
 services:
   nginx:
     image: nginx:alpine
+    build:
+      context: nginx/
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       - "443:443"
@@ -27,7 +30,7 @@ services:
       POSTGRES_ROOT_PASSWORD: "uireh34t34$GTG·%PG·$T*·P·*WP"
       POSTGRES_DB: vblog
       POSTGRES_USER: vblog_adm
-      POSTGRES_PASSWORD: "%$iwuehfuiwhl|#~qgul!"
+      POSTGRES_PASSWORD: $iwuehfuiwhl|#~qgul!
     ports:
       - "5432:5432"
     volumes:

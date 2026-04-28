@@ -2,7 +2,13 @@
 
 @section('title', 'Perfila')
 
-@auth(Auth::user()->id === $user->id)
+@if (Auth::check())
+    @if (Auth::id() !== $user->id)
+        {{ redirect('/') }}
+    @endif
+@else
+    {{ redirect('/login') }}
+@endif
 
 @section('content')
     <div class="bg-zinc-800 rounded-lg shadow-lg overflow-hidden">
@@ -23,8 +29,9 @@
                     <div class="mb-4">
                         <label for="role" class="block text-sm font-medium text-gray-300">Rola</label>
                         <select id="role" name="role" class="bg-zinc-700 text-gray-300 placeholder:text-gray-500 border border-zinc-500 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="user" {{ $user->role === 'user' ? 'selected' : '' }}>Erabiltzailea</option>
-                            <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Administrazioa</option>
+                            <option value="user" {{ $user->role === 'user' ? 'selected' : '' }}>user</option>
+                            <option value="author" {{ $user->role === 'author' ? 'selected' : '' }}>author</option>
+                            <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>admin</option>
                         </select>
                     </div>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-70  focus:outline-none focus:ring-2 focus:ring-blue-5  focus:ring-offset-2">Gorde</button>
@@ -33,5 +40,3 @@
         </div>
     </div>
 @endsection
-
-@endauth

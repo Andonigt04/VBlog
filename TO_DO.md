@@ -3,10 +3,10 @@
 users/edit
 users/delete
 users/index
-/profile
+*/profile
 /dashboard
-login
 *signup
+login
 logout
 
 posts/edit

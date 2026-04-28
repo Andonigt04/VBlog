@@ -8,11 +8,11 @@ use Illuminate\Routing\Controller;
 
 class PostController extends Controller
 {
-    public static function index(Request $request)
+    public static function index(Request $request, int $pages = 1)
     {
         try
         {
-            $posts = Post::orderBy("created_at", "desc")->paginate(50);
+            $posts = Post::orderBy("created_at", "desc")->paginate($pages);
 
             // Si la petición espera JSON (API)
             if ($request->wantsJson() || $request->is('api/*')) {

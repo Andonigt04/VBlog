@@ -11,6 +11,12 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
+        host: 'localhost',
+        port: 5173,
+        cors: {
+            origin: ['http://vblog.local:8000'],
+            credentials: true,
+        },
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
