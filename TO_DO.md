@@ -12,7 +12,7 @@ logout
 posts/edit
 posts/delete
 posts/create
-posts/show
+*posts/show (falta comprobar y hacer que se pueda insertar imagenes y contenido de manera dinamica como MarkDown)
 *posts/index
 
 comments/index

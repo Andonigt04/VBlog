@@ -24,7 +24,7 @@ services:
       - pgcontent:/var/www/html/storage
     depends_on:
       - postgresql
-    command: sh -c "php artisan migrate --force && php artisan db:seed && php-fpm"
+    command: sh -c "php artisan migrate:fresh && php artisan db:seed && php-fpm"
 
   postgresql:
     image: postgres:latest

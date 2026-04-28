@@ -8,7 +8,7 @@
                 <li><a href="{{ route('posts.index', ['category' => 'tools']) }}" class="hover:text-white transition">Tools</a></li>
                 <li><a href="{{ route('posts.index', ['category' => 'good-practices']) }}" class="hover:text-white transition">Good Practices</a></li>
             </ul>
-            @if (!Auth::guard('web')->check())
+            @if (!Auth::check())
                 <ul class="flex flex-row space-x-4">
                     <li><a href="{{ route('login') }}" class="hover:text-white transition">Login</a></li>
                     <li><a href="{{ route('signup') }}" class="hover:text-white transition">Signup</a></li>

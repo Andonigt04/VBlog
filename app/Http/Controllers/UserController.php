@@ -114,7 +114,7 @@ class UserController extends Controller
                 return back()->withErrors(['email' => 'Usuario no encontrado']);
             }
 
-            Auth::guard('web')->login($user, true);
+            Auth::login($user, true);
             if ($request->wantsJson() || $request->is('api/*')) {
                 // Redirigir según rol
                 if ($user->role === 'admin') {
@@ -166,19 +166,21 @@ class UserController extends Controller
     public function logout()
     {
         try {
-
+            $t = Auth::check();
             if (Auth::check()) {
                 Auth::logout();
+                session()->invalidate();
+                session()->regenerateToken();
+
                 url('login');
-                
                 return response()->json([
                     'status' => 200,
                     'message' => 'User logged out successfully',
                 ]);
             }
-
             return response()->json([
                 'status' => 401,
+                'loged_in' => $t,
                 'message' => 'No user is currently logged in',
             ], 401);
         } catch (\Exception $e) {
