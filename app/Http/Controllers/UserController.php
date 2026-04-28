@@ -115,6 +115,7 @@ class UserController extends Controller
             }
 
             Auth::login($user, true);
+            session()->put('auth', true);
             if ($request->wantsJson() || $request->is('api/*')) {
                 // Redirigir según rol
                 if ($user->role === 'admin') {
@@ -166,11 +167,9 @@ class UserController extends Controller
     public function logout()
     {
         try {
-            $t = Auth::check();
             if (Auth::check()) {
                 Auth::logout();
-                session()->invalidate();
-                session()->regenerateToken();
+                session()->forget('auth');
 
                 url('login');
                 return response()->json([
@@ -180,7 +179,6 @@ class UserController extends Controller
             }
             return response()->json([
                 'status' => 401,
-                'loged_in' => $t,
                 'message' => 'No user is currently logged in',
             ], 401);
         } catch (\Exception $e) {
