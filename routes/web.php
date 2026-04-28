@@ -7,27 +7,31 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
     return view('home');
+
+    if ($request->getHost() === 'dashboard.vblog.local') {
+        return redirect()->route('dashboard');
+    }
 })->name('home');
 
 Route::get('/login', function () {
     return view('users.login');
 })->name('login');
+Route::post('/login', [UserController::class, 'login'])->name('login.post');
 
 Route::get('/signup', function () {
     return view('users.signup');
 })->name('signup');
 
 Route::get('/dashboard', function (Request $request) {
-    if ($request->getHost() !== 'dashboard.vblog.local') {
+    if ($request->getHost() !== 'vblog.local') {
         abort(404);
     }
-    return view('dashboard');
 })->middleware('auth')->name('dashboard');
 
 Route::get('/profile', function () {
-    return view('users.profile')->with('user', UserController::profile(new Request()));
+    return view('users.profile')->with('user', UserController::show(Auth::id()));
 })->middleware('auth')->name('users.profile');
 
 Route::prefix('users')->group(function () {

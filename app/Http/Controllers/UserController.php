@@ -112,12 +112,15 @@ class UserController extends Controller
             Auth::login($user, true);
             if ($request->wantsJson() || $request->is('api/*')) {
                 // Redirigir según rol
-                $redirect = ($user->role === 'admin') ? '/dashboard' : '/';
+                if ($user->role === 'admin') {
+                    url('/dashboard');
+                } else {
+                    url('/');
+                }
                 return response()->json([
                     'status' => 200,
                     'message' => 'Login correcto',
                     'user' => $user->name,
-                    'redirect' => $redirect,
                 ]);
             }
             // Web

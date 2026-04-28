@@ -3,6 +3,7 @@
 @section('title', 'Login')
 
 @section('content')
+
 @auth
     {{ redirect((Auth::user()->role === "admin") ? '/dashboard' : '/') }}
 @endauth
@@ -10,7 +11,8 @@
     <div class="bg-zinc-900 p-8 rounded-lg shadow-lg w-full max-w-md border border-zinc-700/50">
         <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
         
-        <form id="loginForm" class="space-y-4">
+        <form method="POST" action="{{ route('login.post') }}" class="space-y-4">
+            @csrf
             <div>
                 <label for="email" class="block text-sm font-medium mb-2">Email</label>
                 <input type="email" name="email" id="email" required 
@@ -29,25 +31,6 @@
                 class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
                 Login
             </button>
-        </form>
-        <script type="module">
-        import { apiLogin } from '/resources/js/app.js';
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('loginForm');
-            const errorDiv = document.getElementById('loginError');
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                errorDiv.textContent = '';
-                apiLogin({
-                    email: form.querySelector('[name="email"]').value,
-                    passkey: form.querySelector('[name="passkey"]').value,
-                    onError: (data) => {
-                        errorDiv.textContent = data.message || 'Login failed';
-                    }
-                });
-            });
-        });
-        </script>
         </form>
     </div>
 </div>

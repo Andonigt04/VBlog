@@ -8,10 +8,11 @@ use Illuminate\Routing\Controller;
 
 class CommentController extends Controller
 {
-    public static function index(Request $request, int $id)
+    public static function index(Request $request, int $id = null)
     {
         try {
-            $comments = Comment::where('post_id', $id)->orderBy("created_at", "desc")->paginate(50);
+            if ($id) $comments = Comment::where('post_id', $id)->orderBy("created_at", "desc")->paginate(50);
+            else $comments = Comment::orderBy("created_at","desc")->paginate(50);
 
             // Si la petición espera JSON (API)
             if ($request->wantsJson() || $request->is('api/*')) {
