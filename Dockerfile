@@ -1,4 +1,4 @@
-FROM php:8.3-cli AS php-builder
+FROM php:8.4-cli AS php-builder
 
 RUN ( curl -sSLf https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - || echo 'return 1' ) | sh -s \
     xdebug pdo pdo_mysql mysqli openssl fileinfo curl sqlite3 zip gd bcmath gd zip
@@ -24,7 +24,7 @@ COPY . .
 RUN npm ci && npm run build
 RUN ls -la /var/www/html/public/build
 
-FROM php:8.3-fpm
+FROM php:8.4-fpm
 
 WORKDIR /var/www/html
 
@@ -34,6 +34,7 @@ RUN apt update && apt install -y \
     libzip-dev \
     libjpeg-dev \
     libfreetype6-dev \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
@@ -41,7 +42,8 @@ RUN apt update && apt install -y \
     zip \
     pdo_mysql \
     mysqli \
-    bcmath
+    bcmath \
+    pdo_pgsql
 
 COPY --from=composer /var/www/html /var/www/html
 COPY --from=node-builder /var/www/html/public /var/www/html/public
