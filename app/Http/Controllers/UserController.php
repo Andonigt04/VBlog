@@ -15,7 +15,16 @@ class UserController extends Controller
     public function index()
     {
         return view('users.index');
-    }   
+    }
+
+    public function users()
+    {
+        $users = User::all();
+        return response()->json([
+            'status' => 200,
+            'users' => $users,
+        ]);
+    }
 
     public function show(Request $request, $id)
     {
