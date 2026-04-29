@@ -26,6 +26,15 @@ class UserController extends Controller
         ]);
     }
 
+    public function me(Request $request)
+    {
+        return response()->json([
+            'status' => 200,
+            'user' => Auth::user(),
+            'timestamp' => now(),
+        ]);
+    }
+
     public function show(Request $request, $id)
     {
         try
@@ -83,10 +92,10 @@ class UserController extends Controller
         try {
             $request->validate([
                 'email' => 'required|email',
-                'password' => 'required',
+                'passkey' => 'required',  // FIX: era 'password', el form manda 'passkey'
             ]);
 
-            $credentials = ['email' => $request->email, 'password' => $request->password];
+            $credentials = ['email' => $request->email, 'password' => $request->passkey];  // FIX
 
             if (!Auth::attempt($credentials)) {
                 return $request->wantsJson() || $request->is('api/*')
@@ -94,7 +103,7 @@ class UserController extends Controller
                     : back()->withErrors(['email' => 'Credenciales incorrectas']);
             }
 
-            $user = Auth::user(); // ✅ Obtener usuario autenticado
+            $user = Auth::user();
 
             $request->session()->regenerate();
 
@@ -124,7 +133,7 @@ class UserController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => Hash::make($request->passkey),  // FIX: era $request->password
             ]);
 
             return response()->json([

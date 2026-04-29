@@ -7,6 +7,8 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;   // FIX: faltaba este import
+use Illuminate\Support\Facades\Http;   // FIX: faltaba este import
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (Request $request) {
@@ -21,6 +23,7 @@ Route::post('/login', [UserController::class, 'login'])->name('login.post');
 Route::get('/signup', function () {
     return view('users.signup');
 })->name('signup');
+Route::post('/logout', [UserController::class, 'logout'])->name('logout');
 
 Route::get('/dashboard', function (Request $request) {
     if ($request->getHost() !== 'vblog.local') {
@@ -29,7 +32,7 @@ Route::get('/dashboard', function (Request $request) {
     $users = User::orderBy('created_at', 'desc')->paginate(10);
     $posts = Post::orderBy('created_at', 'desc')->paginate(10);
     $comments = Comment::orderBy('created_at', 'desc')->paginate(10);
-    
+
     $users_count = User::count();
     $posts_count = Post::count();
     $comments_count = Comment::count();
@@ -63,27 +66,31 @@ Route::prefix('posts')->group(function () {
     Route::get('/', function () {
         return view('posts.index')->with('posts', PostController::index(new Request(), 50));
     })->name('posts.index');
+
     Route::get('/{id}', function (Request $request, $id) {
         $post = PostController::show($request, $id);
 
-        if ($post) {
-            $comments = CommentController::index($request, $id);
-        } else {
-            $comments = collect();
-        }
-
         if (!$post) abort(404);
-        return view('posts.show')->with('post', $post)->with('comments', $comments);
+
+        $comments = CommentController::index($request, $id, 10);  // FIX: 10 comentarios por página
+
+        // FIX: pasar $author a la vista
+        $author = $post->user_id ? (User::find($post->user_id)?->name ?? 'Desconocido') : 'Desconocido';
+
+        return view('posts.show')
+            ->with('post', $post)
+            ->with('comments', $comments)
+            ->with('author', $author);
     })->name('posts.show');
 
     Route::middleware('auth')->group(function () {
         Route::get('create', function () {
             return view('posts.create');
         })->name('posts.create');
-        Route::get('edit', function () {
+        Route::get('edit/{id}', function ($id) {       // FIX: añadido {id}
             return view('posts.edit');
         })->name('posts.edit');
-        Route::get('delete', function () {
+        Route::get('delete/{id}', function ($id) {    // FIX: añadido {id}
             return view('posts.delete');
         })->name('posts.delete');
     });

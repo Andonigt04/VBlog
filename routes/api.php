@@ -1,6 +1,5 @@
 <?php
 
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PostController;
@@ -9,7 +8,6 @@ use App\Http\Controllers\CommentController;
 /***********************
  * API Routes
  ***********************/
-// TODO: Add logic to API and DB connection checking route
 Route::get('/status', function () {
     return response()->json(['status' => 'ok']);
 });
@@ -23,7 +21,7 @@ Route::get('/me', [UserController::class, 'me'])->middleware('auth');
 Route::get('/users', [UserController::class, 'users'])->middleware('auth');
 Route::get('/users/{id}', [UserController::class, 'show']);
 
-Route::get('/posts', [PostController::class,'index']);
+Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/{id}', [PostController::class, 'show']);
 
 Route::get('/comments', [CommentController::class, 'index']);
@@ -43,8 +41,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('delete')->group(function () {
-        Route::delete('/user/{id}', [UserController::class, 'delete']);
-        Route::delete('/post/{id}', [PostController::class, 'delete']);
-        Route::delete('/comment/{id}', [CommentController::class, 'delete']);
+        Route::delete('/user/{id}', [UserController::class, 'destroy']);      // FIX: era 'delete'
+        Route::delete('/post/{id}', [PostController::class, 'destroy']);      // FIX: era 'delete'
+        Route::delete('/comment/{id}', [CommentController::class, 'destroy']); // FIX: era 'delete'
     });
 });

@@ -16,7 +16,12 @@
             @else
             <ul class="flex flex-row space-x-4">
                 <li><a href="{{ route('users.profile') }}" class="hover:text-white transition">Profile</a></li>
-                <li><a href="{{ url('/api/logout') }}" class="hover:text-white transition">Logout</a></li>
+                <li>
+                    <form method="POST" action="{{ route('logout') }}" class="inline">
+                        @csrf
+                        <button type="submit" class="hover:text-white transition">Logout</button>
+                    </form>
+                </li>
             </ul>
             @endif
         </nav>
