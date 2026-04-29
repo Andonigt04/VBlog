@@ -2,12 +2,10 @@
 
 @section('title', 'Perfila')
 
-@if (Auth::check())
-    @if (Auth::id() !== $user->id)
-        {{ redirect('/') }}
-    @endif
-@else
+@if (!Auth::check())
     {{ redirect('/login') }}
+@elseif (Auth::user()->role !== 'admin' || Auth::id() !== $user->id)
+    {{ redirect('/') }}
 @endif
 
 @section('content')

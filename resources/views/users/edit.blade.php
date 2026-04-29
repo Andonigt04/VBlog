@@ -2,6 +2,10 @@
 
 @section('title', 'Erabiltzailea')
 
+@if (Auth::user()->role !== 'admin' || Auth::user()->id !== $user->id)
+    redirect()->route('home');
+@endif
+
 @section('content')
 <div>
     <form id="user-edit-form" method="POST" action="{{ url('/api/update/users/' . $user->id) }}" enctype="multipart/form-data"

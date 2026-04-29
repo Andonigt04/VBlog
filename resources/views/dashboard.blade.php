@@ -14,15 +14,15 @@
     <div class="flex flex-row">
         <div>
             <h6>Users</h6>
-            <p>{{ $users->count() }}</p>
+            <p>{{ $users_count }}</p>
         </div>
         <div>
             <h6>Posts</h6>
-            <p>{{ $posts->count() }}</p>
+            <p>{{ $posts_count }}</p>
         </div>
         <div>
             <h6>Comments</h6>
-            <p>{{ $comments->count() }}</p>
+            <p>{{ $comments_count }}</p>
         </div>
     </div>
     <div>

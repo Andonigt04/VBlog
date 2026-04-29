@@ -4,39 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    public static function index(Request $request, int $pages = 1)
+
+    public function index()
     {
-        try {
-            $users = User::orderBy('created_at', 'desc')->paginate($pages);
+        return view('users.index');
+    }   
 
-             // Si la petición espera JSON (API)
-             if ($request->wantsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'status' => 200,
-                    'users' => $users->items(),
-                    'pagination' => [
-                        'current_page' => $users->currentPage(),
-                        'last_page' => $users->lastPage(),
-                        'per_page' => $users->perPage(),
-                        'total' => $users->total(),
-                    ]
-                ]);
-             }
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Error fetching users',
-            ], 500);
-        }
-    }
-
-    public static function show(Request $request, $id)
+    public function show(Request $request, $id)
     {
         try
         {
@@ -56,7 +37,7 @@ class UserController extends Controller
         }
     }
 
-    public static function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
@@ -77,7 +58,7 @@ class UserController extends Controller
         }
     }
 
-    public static function destroy($id)
+    public function destroy($id)
     {
         $user = User::findOrFail($id);
         $user->delete();
@@ -91,46 +72,32 @@ class UserController extends Controller
     public function login(Request $request)
     {
         try {
-            $user = User::where('email', $request->email)->first();
-            $password = $request->password ?? $request->passkey;
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
 
-            if (!$user || !Hash::check($password, $user->password)) {
-                if ($request->wantsJson() || $request->is('api/*')) {
-                    return response()->json([
-                        'status' => 401,
-                        'message' => 'Credenciales incorrectas',
-                    ], 401);
-                }
-                return back()->withErrors(['email' => 'Credenciales incorrectas']);
+            $credentials = ['email' => $request->email, 'password' => $request->password];
+
+            if (!Auth::attempt($credentials)) {
+                return $request->wantsJson() || $request->is('api/*')
+                    ? response()->json(['status' => 401, 'message' => 'Credenciales incorrectas'], 401)
+                    : back()->withErrors(['email' => 'Credenciales incorrectas']);
             }
 
-            if (!$user) {
-                if ($request->wantsJson() || $request->is('api/*')) {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Usuario no encontrado',
-                    ], 404);
-                }
-                return back()->withErrors(['email' => 'Usuario no encontrado']);
-            }
+            $user = Auth::user(); // ✅ Obtener usuario autenticado
 
-            Auth::login($user, true);
-            session()->put('auth', true);
+            $request->session()->regenerate();
+
             if ($request->wantsJson() || $request->is('api/*')) {
-                // Redirigir según rol
-                if ($user->role === 'admin') {
-                    url('/dashboard');
-                } else {
-                    url('/');
-                }
                 return response()->json([
                     'status' => 200,
                     'message' => 'Login correcto',
                     'user' => $user->name,
                 ]);
             }
-            // Web
-            return redirect(($user->role === 'admin') ? '/dashboard' : '/');
+
+            return redirect($user->role === 'admin' ? '/dashboard' : '/');
         } catch (\Exception $e) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -164,26 +131,20 @@ class UserController extends Controller
         }
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        try {
-            if (Auth::check()) {
-                Auth::logout();
-                session()->forget('auth');
+        try
+        {
+            Auth::logout();
 
-                url('login');
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'User logged out successfully',
-                ]);
-            }
-            return response()->json([
-                'status' => 401,
-                'message' => 'No user is currently logged in',
-            ], 401);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->with('status', 'User logged out successfully');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
+                'error' => $e->getMessage(),
                 'message' => 'Error logging out user',
             ], 500);
         }

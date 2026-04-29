@@ -1,4 +1,5 @@
 *db setup
+*docker setup (nginx for reverse proxy + db persistente con volumen de imagenes por separado)
 
 users/edit
 users/delete

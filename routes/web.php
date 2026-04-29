@@ -29,21 +29,29 @@ Route::get('/dashboard', function (Request $request) {
     $users = User::orderBy('created_at', 'desc')->paginate(10);
     $posts = Post::orderBy('created_at', 'desc')->paginate(10);
     $comments = Comment::orderBy('created_at', 'desc')->paginate(10);
-    return view('dashboard', compact('users', 'posts', 'comments'));
+    
+    $users_count = User::count();
+    $posts_count = Post::count();
+    $comments_count = Comment::count();
+
+    return view('dashboard', compact('users', 'posts', 'comments', 'users_count', 'posts_count', 'comments_count'));
 })->middleware('auth')->name('dashboard');
 
 Route::get('/profile', function () {
-    return view('users.profile')->with('user', User::find(Auth::id()));
+    return view('users.profile')->with('user', User::find(Auth::user()->id));
 })->middleware('auth')->name('users.profile');
 
 Route::prefix('users')->group(function () {
     Route::get('/', function () {
-        return view('users.index')->with('users', UserController::index(new Request()));
+        $response = Http::get(url('/api/users'));
+        $data = $response->json();
+        $users = $data['users'] ?? [];
+        return view('users.index')->with('users', $users);
     })->name('users.index');
 
     Route::middleware('auth')->group(function () {
-        Route::get('edit', function () {
-            return view('users.edit');
+        Route::get('edit', function (Request $request) {
+            return view('users.edit', ['user' => User::find($request->user()->id)]);
         })->name('users.edit');
         Route::get('delete', function () {
             return view('users.delete');

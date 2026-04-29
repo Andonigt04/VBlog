@@ -20,7 +20,7 @@ Route::get('/logout', [UserController::class, 'logout']);
 
 Route::get('/me', [UserController::class, 'me'])->middleware('auth');
 
-Route::get('/users', [UserController::class, 'index'])->middleware('auth');
+Route::get('/users', [UserController::class, 'index']);//->middleware('auth');
 Route::get('/users/{id}', [UserController::class, 'show']);
 
 Route::get('/posts', [PostController::class,'index']);
