@@ -2,12 +2,12 @@
 Not for official use. 
 
 
-FastApi:
-- ¿artículos divididos por tags? pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas
+Laravel:
+*- ¿artículos divididos por tags? pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas
 
-- subdominios oculto (como hacer los)
+*- subdominios oculto (como hacer los)
 
-- roles de usuario
+*- roles de usuario
 - endpoints autenticados (limitar el acceso a ciertas rutas)
 - autenticación débil
 - cookies inseguras
@@ -19,13 +19,13 @@ FastApi:
 - IDOR
 
 - rutas(blade):
-  - /login
-  - /signup
+  *- /login
+  *- /signup
   - /dashboard (privada por autenticación; y que solo sea accesible por escalado de privilegios en conjunto a un subdominio (admin.blog.local) + estar autenticado con admin precreado en la db con rol de admin)
   - /profile (vulnerabilidad al estar logeado como admin al tener esos permisos puedes hacer subir archivo desde el perfil y que hacer un reverse Shell para ganar acceso ; privada por autentizacion)
   - /admin (sin requerimiento de auth, pero solo accesible desde un subdominio especifico(admin.blog.local); panel de administrador)
-  - /posts
-  - /posts/{id} (créate, edit, delete)
+  *- /posts
+  *- /posts/{id} (créate, edit, delete)
 
 - /api(res -> json, status code):
   - /login
@@ -38,19 +38,18 @@ FastApi:
   - /status -> [code, {UP/DOWN, dbConnection, timestamp}]
 
 Docker:
-
- - contenedor laravel/web
- - segundo FastAPI/api
- - tercer contenedor para db (por defecto tiene que tener contenido para no estar vacio al hacer docker compose up --build)
- - volumen para imagenes (imagenes si da tiempo o apetece)
+ *- primer contenedor nginx para reverse proxy
+ *- segundo contenedor laravel/web/api
+ *- tercer contenedor para db (por defecto tiene que tener contenido para no estar vacio al hacer docker compose up --build)
+ *- volumen para imagenes y otro para db persistente (imagenes si da tiempo o apetece)
 
 Tables:
 
- - User(id, name, email, password, role)
- - Post(id, title, tags[], context, userId, timestamps)
- - Comments(id, post_id, user_id, context(imagenes renderizables por url como en los posts), timestamps)
+ *- User(id, name, email, password, role)
+ *- Post(id, title, tags[], context, userId, timestamps)
+ *- Comments(id, post_id, user_id, context(imagenes renderizables por url como en los posts), timestamps)
 
 Enums:
 
- - tags[pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas]
- - role[client, author, admin]
+ *- tags[pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas]
+ *- role[client, author, admin]
