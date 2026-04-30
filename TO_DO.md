@@ -31,6 +31,8 @@ cambiar el estilo de toda la pagina para que sea coherente
 preparar las vulns paso a paso como ir escalando la maquina (+ hints, soluciones)
 hacer las vulns comotal
 
+¿crear seeds de comentarios como ocultos como hints?
+
 *tests de docker
 revision de vulns
 revision de requisitos
