@@ -1,13 +1,13 @@
 <div class="border-t border-zinc-700 py-4">
     <div class="flex items-start justify-between gap-4">
         <div class="flex-1">
-            <p class="text-sm text-gray-400 mb-2">
+            <p class="text-sm text-zinc-400 mb-2">
                 {{ $comment->user_id ? \App\Models\User::find($comment->user_id)?->name ?? 'Ezezaguna' : 'Ez dago' }}
                 | Sortua: {{ $comment->created_at->format('Y-m-d H:i') }}
             </p>
 
             {{-- Modo lectura --}}
-            <p id="comment-text-{{ $comment->id }}" class="text-zinc-200">{{ $comment->content }}</p>
+            <p id="comment-text-{{ $comment->id }}" class="text-zinc-200">{!! $comment->content !!}</p>
 
             {{-- Modo edición (oculto por defecto) --}}
             @auth

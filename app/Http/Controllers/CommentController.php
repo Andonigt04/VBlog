@@ -68,7 +68,7 @@ class CommentController extends Controller
             $comment = Comment::create([
                 'post_id' => $request->post_id,
                 'user_id' => Auth::id(),
-                'content' => $request->content,
+                'content' => strip_tags($request->content),
             ]);
 
             if ($request->wantsJson() || $request->is('api/*')) {
@@ -105,7 +105,7 @@ class CommentController extends Controller
 
             $request->validate(['content' => 'required|string|max:2000']);
 
-            $comment->update(['content' => $request->content]);
+            $comment->update(['content' => strip_tags($request->content)]);
 
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([

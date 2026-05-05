@@ -76,15 +76,16 @@ class UserController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $user = User::findOrFail($id);
         $user->delete();
 
-        return response()->json([
-            'status' => 200,
-            'message' => 'User deleted successfully',
-        ]);
+        if ($request->wantsJson() || $request->is('api/*')) {
+            return response()->json(['status' => 200, 'message' => 'User deleted successfully']);
+        }
+
+        return redirect()->route('users.index')->with('success', 'Usuario eliminado.');
     }
 
     public function login(Request $request)
@@ -131,21 +132,30 @@ class UserController extends Controller
     {
         try {
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->passkey),  // FIX: era $request->password
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->passkey),
             ]);
 
-            return response()->json([
-                'status' => 201,
-                'message' => 'User created successfully',
-                'user' => $user->name,
-            ], 201);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status'  => 201,
+                    'message' => 'User created successfully',
+                    'user'    => $user->name,
+                ], 201);
+            }
+
+            Auth::login($user);
+            $request->session()->regenerate();
+            return redirect('/');
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Error creating user',
-            ], 500);
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status'  => 500,
+                    'message' => 'Error creating user',
+                ], 500);
+            }
+            return back()->withErrors(['email' => 'Error al crear el usuario. El email puede estar en uso.'])->withInput();
         }
     }
 

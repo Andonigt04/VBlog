@@ -1,51 +1,52 @@
 @extends('layouts.app')
 
-@section('title', 'Erabiltzailea')
-
-@if (Auth::user()->role !== 'admin' || Auth::user()->id !== $user->id)
-    redirect()->route('home');
-@endif
+@section('title', 'Erabiltzailea editatu')
 
 @section('content')
-<div>
-    <form id="user-edit-form" method="POST" action="{{ url('/api/update/users/' . $user->id) }}" enctype="multipart/form-data"
-          class="space-y-4 mt-4 text-sm text-zinc-300">
-        @csrf
-        @method('PUT')
+<div class="mx-auto max-w-4xl mt-10 px-4">
+    <div class="bg-zinc-800 rounded-lg shadow-lg p-8 border border-zinc-700/50">
+        <h1 class="text-2xl font-bold mb-6 text-zinc-100">Erabiltzailea editatu</h1>
 
-        <div>
-            <label class="block text-zinc-400 font-medium">Izena</label>
-            <input type="text" name="name" value="{{ old('name', $user->name) }}"
-                   class="w-full p-2 rounded bg-zinc-800 text-zinc-100 border border-zinc-700">
-        </div>
+        <form id="user-edit-form" method="POST" action="{{ url('/api/update/user/' . $user->id) }}">
+            @csrf
+            @method('PUT')
 
-        <div>
-            <label class="block text-zinc-400 font-medium">Emaila</label>
-            <input type="email" name="email" value="{{ old('email', $user->email) }}"
-                   class="w-full p-2 rounded bg-zinc-800 text-zinc-100 border border-zinc-700">
-        </div>
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-zinc-400 mb-1">Izena</label>
+                <input type="text" name="name" value="{{ old('name', $user->name) }}"
+                       class="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100
+                              placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
 
-        <div>
-            <label class="block text-zinc-400 font-medium">Rola</label>
-            <select name="role" class="w-full p-2 rounded bg-zinc-800 text-zinc-100 border border-zinc-700">
-                <option value="user" {{ $user->role === 'user' ? 'selected' : '' }}>User</option>
-                <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Admin</option>
-            </select>
-        </div>
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-zinc-400 mb-1">Emaila</label>
+                <input type="email" name="email" value="{{ old('email', $user->email) }}"
+                       class="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100
+                              placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
 
-        <div class="flex justify-end">
-            <button type="submit"
-                    class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
-                ✎ Aldatu
-            </button>
-        </div>
-    </form>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-zinc-400 mb-1">Rola</label>
+                <select name="role"
+                        class="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100
+                               focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="user"   {{ $user->role === 'user'   ? 'selected' : '' }}>User</option>
+                    <option value="editor" {{ $user->role === 'editor' ? 'selected' : '' }}>Editor</option>
+                    <option value="admin"  {{ $user->role === 'admin'  ? 'selected' : '' }}>Admin</option>
+                </select>
+            </div>
 
-    <div class="mt-6">
-        <a href="{{ route('users.index') }}"
-           class="bg-zinc-700 text-zinc-200 hover:bg-zinc-600 hover:text-white px-4 py-2 rounded-lg transition">
-            ← Itzuli zerrendara
-        </a>
+            <div class="flex items-center gap-4">
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                    Gorde
+                </button>
+                <a href="{{ route('users.index') }}"
+                   class="text-zinc-400 hover:text-zinc-200 transition-colors text-sm">
+                    Ezeztatu
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 @endsection

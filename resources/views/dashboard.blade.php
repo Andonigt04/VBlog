@@ -11,18 +11,18 @@
         <p class="text-center text-zinc-400">Ongi etorri {{ Auth::user()->name }}! Hau da zure dashboard-a.</p>
     </div>
     @else
-    <div class="flex flex-row gap-6 mb-6">
-        <div>
-            <h6>Users</h6>
-            <p>{{ $users_count }}</p>
+    <div class="grid grid-cols-3 gap-4 mb-8 w-full">
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+            <p class="text-xs text-zinc-400 uppercase tracking-wide mb-1">Users</p>
+            <p class="text-2xl font-bold text-zinc-100">{{ $users_count }}</p>
         </div>
-        <div>
-            <h6>Posts</h6>
-            <p>{{ $posts_count }}</p>
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+            <p class="text-xs text-zinc-400 uppercase tracking-wide mb-1">Posts</p>
+            <p class="text-2xl font-bold text-zinc-100">{{ $posts_count }}</p>
         </div>
-        <div>
-            <h6>Comments</h6>
-            <p>{{ $comments_count }}</p>
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+            <p class="text-xs text-zinc-400 uppercase tracking-wide mb-1">Comments</p>
+            <p class="text-2xl font-bold text-zinc-100">{{ $comments_count }}</p>
         </div>
     </div>
 

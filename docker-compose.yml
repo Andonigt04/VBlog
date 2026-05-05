@@ -11,8 +11,16 @@ services:
       - .:/var/www/html
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/server.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/dev.conf:/etc/nginx/conf.d/dev.conf
     depends_on:
-     - laravel
+      - laravel
+      - dev_panel
+
+  dev_panel:
+    image: nginx:alpine
+    volumes:
+      - ./dev/public:/usr/share/nginx/html:ro
+
   laravel:
     build:
       context: .

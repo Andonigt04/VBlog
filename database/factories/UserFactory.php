@@ -24,11 +24,6 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        if (random_int(0, 25) === 18) {
-            $role = 'author';
-        } else {
-            $role = 'user';
-        }
 
         return [
             'name' => fake()->name(),
@@ -36,7 +31,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
-            'role' => $role,
+            'role' => "client",
         ];
     }
 

@@ -23,13 +23,11 @@ Route::post('/login', [UserController::class, 'login'])->name('login.post');
 Route::get('/signup', function () {
     return view('users.signup');
 })->name('signup');
+Route::post('/signup', [UserController::class, 'signup'])->name('signup.post');
 
 Route::post('/logout', [UserController::class, 'logout'])->name('logout');
 
 Route::get('/dashboard', function (Request $request) {
-    if ($request->getHost() !== 'vblog.local') {
-        abort(404);
-    }
     $users    = User::orderBy('created_at', 'desc')->paginate(10);
     $posts    = Post::orderBy('created_at', 'desc')->paginate(10);
     $comments = Comment::orderBy('created_at', 'desc')->paginate(10);
@@ -48,9 +46,7 @@ Route::get('/profile', function () {
 // ─── Users ───────────────────────────────────────────────────────────────────
 Route::prefix('users')->group(function () {
     Route::get('/', function () {
-        $response = Http::get(url('/api/users'));
-        $data     = $response->json();
-        $users    = $data['users'] ?? [];
+        $users = User::orderBy('created_at', 'desc')->get()->toArray();
         return view('users.index')->with('users', $users);
     })->name('users.index');
 
@@ -62,6 +58,8 @@ Route::prefix('users')->group(function () {
         Route::get('delete/{id}', function ($id) {
             return view('users.delete', ['user' => User::findOrFail($id)]);
         })->name('users.delete');
+
+        Route::delete('destroy/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 });
 
@@ -108,6 +106,61 @@ Route::prefix('posts')->group(function () {
             ->with('comments', $comments)
             ->with('author', $author);
     })->name('posts.show');
+});
+
+// ─── Rutas ocultas ───────────────────────────────────────────────────────────
+// No enlazadas desde la interfaz — descubribles por enumeración
+
+Route::get('/backup', function () {
+    $content = <<<TXT
+# VBlog — Backup de configuracion
+# Generado: 2026-04-28 03:00:01
+
+[credentials]
+editor_user=editor01
+editor_pass=editor01pass
+admin_email=adm01@vblog.local
+admin_pass=adm01local
+
+[database]
+host=postgresql
+port=5432
+name=vblog
+user=vblog_adm
+pass=uireh34t34
+
+[app]
+debug=false
+env=production
+TXT;
+    return response($content, 200, ['Content-Type' => 'text/plain']);
+});
+
+Route::get('/debug', function () {
+    return response()->json([
+        'app'            => config('app.name'),
+        'env'            => config('app.env'),
+        'laravel'        => app()->version(),
+        'php'            => phpversion(),
+        'db_driver'      => config('database.default'),
+        'session_driver' => config('session.driver'),
+        'users'          => User::count(),
+        'posts'          => Post::count(),
+        'comments'       => Comment::count(),
+        'server'         => $_SERVER['SERVER_SOFTWARE'] ?? 'nginx',
+    ]);
+});
+
+Route::get('/old', function () {
+    return redirect('/');
+});
+
+Route::get('/internal', function () {
+    abort(403, 'Acceso restringido al personal interno.');
+});
+
+Route::get('/admin', function () {
+    return redirect('/dashboard');
 });
 
 // ─── Comments ────────────────────────────────────────────────────────────────

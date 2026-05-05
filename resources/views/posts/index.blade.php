@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Posts')
+
 @section('content')
 <div class="bg-zinc-800 shadow-lg overflow-hidden top-5">
     <div class="overflow-x-auto mx-auto max-w-dvh">

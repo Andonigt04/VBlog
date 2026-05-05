@@ -9,7 +9,7 @@
             {{-- Contenido del post --}}
             <div>
                 <h1 class="text-3xl font-bold mb-4">{{ $post->title }}</h1>
-                <p class="text-sm text-gray-400 mb-6">Egilea: {{ $author }} | Sortua: {{ $post->created_at->format('Y-m-d') }}</p>
+                <p class="text-sm text-zinc-400 mb-6">Egilea: {{ $author }} | Sortua: {{ $post->created_at->format('Y-m-d') }}</p>
                 <div class="prose prose-invert">
                     {!! nl2br(e($post->content)) !!}
                 </div>

