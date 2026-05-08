@@ -2,9 +2,7 @@
 
 ## ¿Qué es esto?
 
-VBlog es una aplicación web de ciberseguridad deliberadamente vulnerable. Está diseñada para que **descubras y exploites vulnerabilidades reales** en un entorno controlado y legal.
-
-**No ataques sistemas reales. Todo lo que hagas aquí está en tu propia máquina.**
+VBlog es una aplicación web de ciberseguridad deliberadamente vulnerable.
 
 ---
 
@@ -20,13 +18,6 @@ sudo docker compose up --build -d
 ## Tu Misión
 
 **Escalar desde usuario anónimo → admin**, descubriendo cómo la app expone información, rompe controles de acceso y permite manipular datos.
-
-```
-Fase 0: Exploración anónima
-Fase 1: Usuario registrado
-Fase 2: Escalada de privilegios
-Fase 3: Acceso a áreas internas
-```
 
 **Objetivo final:** Acceder a paneles internos y bases de datos que no deberían ser públicos.
 
