@@ -142,7 +142,7 @@ curl http://vblog.local/api/users/52
 
 **Paso 2: Obtener todos los comentarios sin auth**
 ```bash
-curl http://vblog.local/api/comments
+curl http://localhost/api/comments
 ```
 
 **Impacto:**
@@ -164,11 +164,10 @@ Route::get('/comments', [CommentController::class, 'index']); // ← SIN middlew
 
 **Cambio:**
 ```php
-// ❌ ANTES (vulnerable)
+// vulnerable
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/comments', [CommentController::class, 'index']);
 
-// ✅ DESPUÉS (protegido)
 Route::get('/users/{id}', [UserController::class, 'show'])->middleware('auth');
 Route::get('/comments', [CommentController::class, 'index'])->middleware('auth');
 ```

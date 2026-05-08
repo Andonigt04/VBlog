@@ -1,0 +1,110 @@
+name: CI — Tests & Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── 1. Dependency CVE scan ──────────────────────────────────────────────────
+  audit:
+    name: Composer Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --no-interaction
+      - name: Check for known vulnerabilities
+        run: composer audit
+
+  # ── 2. Static analysis ─────────────────────────────────────────────────────
+  sast:
+    name: Static Analysis (PHPStan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --no-interaction
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=256M
+
+  # ── 3. Unit + Feature tests (SQLite in-memory) ─────────────────────────────
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sqlite3, pdo_sqlite
+          tools: composer:v2
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --no-interaction
+      - name: Generate app key
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Run tests
+        run: php artisan test
+
+  # ── 4. Docker build + HTTP integration + security headers ──────────────────
+  docker:
+    name: Docker Integration & Headers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          # Generate a random APP_KEY so Laravel can encrypt cookies/sessions
+          php -r "echo 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL;" >> .env
+
+      - name: Build and start stack
+        run: docker compose up --build -d
+
+      - name: Wait for app to be ready
+        run: |
+          echo "Waiting for Laravel to respond..."
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost -o /dev/null; then
+              echo "Ready after $((i * 5))s"
+              break
+            fi
+            if [ "$i" -eq 36 ]; then
+              echo "Timeout — dumping logs"
+              docker compose logs laravel
+              exit 1
+            fi
+            echo "  attempt $i/36 ..."
+            sleep 5
+          done
+
+      - name: Verify homepage responds (2xx/3xx)
+        run: |
+          STATUS=$(curl -so /dev/null -w "%{http_code}" http://localhost)
+          echo "HTTP $STATUS"
+          [[ "$STATUS" =~ ^[23] ]] || (echo "Unexpected status $STATUS" && exit 1)
+
+      - name: Check security headers
+        run: bash dev/check-headers.sh http://localhost
+
+      - name: Penetration tests
+        # Exit 1 = vulns confirmed (expected in this intentional-vuln app).
+        # We capture the output but don't fail the CI step so the report is visible.
+        run: bash dev/pentest.sh http://localhost || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

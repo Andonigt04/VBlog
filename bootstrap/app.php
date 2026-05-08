@@ -12,7 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // API routes use session-based auth (same guard as web).
+        // StartSession must be present so Auth::attempt() and the session guard work.
+        // VerifyCsrfToken is NOT appended, so API routes remain CSRF-free.
+        $middleware->api(append: [
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

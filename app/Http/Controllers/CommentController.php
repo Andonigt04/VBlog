@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 
 class CommentController extends Controller
 {
-    public static function index(Request $request, int $id = null, int $pages = 10)
+    public static function index(Request $request, ?int $id = null, int $pages = 10)
     {
         try {
             if ($id) $comments = Comment::where('post_id', $id)->orderBy("created_at", "desc")->paginate($pages);
