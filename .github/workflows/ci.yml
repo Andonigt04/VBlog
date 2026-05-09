@@ -83,16 +83,21 @@ jobs:
         run: |
           echo "Waiting for Laravel to respond..."
           for i in $(seq 1 36); do
-            if curl -sf http://localhost -o /dev/null; then
-              echo "Ready after $((i * 5))s"
+            STATUS=$(curl -so /dev/null -w "%{http_code}" http://localhost)
+            if [[ "$STATUS" =~ ^[23] ]]; then
+              echo "Ready after $((i * 5))s (HTTP $STATUS)"
               break
             fi
+            echo "  attempt $i/36 — HTTP $STATUS"
+            if [ "$i" -eq 6 ]; then
+              echo "--- laravel logs at 30s ---"
+              docker compose logs laravel
+            fi
             if [ "$i" -eq 36 ]; then
-              echo "Timeout — dumping container logs:"
+              echo "--- final logs ---"
               docker compose logs
               exit 1
             fi
-            echo "  attempt $i/36 ..."
             sleep 5
           done
 
