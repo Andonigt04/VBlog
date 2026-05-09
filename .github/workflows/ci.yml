@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "Waiting for Laravel to respond..."
           for i in $(seq 1 36); do
-            STATUS=$(curl -so /dev/null -w "%{http_code}" http://localhost)
+            STATUS=$(curl -so /dev/null -w "%{http_code}" http://localhost 2>/dev/null || echo "000")
             if [[ "$STATUS" =~ ^[23] ]]; then
               echo "Ready after $((i * 5))s (HTTP $STATUS)"
               break
