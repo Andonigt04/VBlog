@@ -7,8 +7,8 @@ URL="${1:-http://localhost}"
 PASS=0
 FAIL=0
 
-ok()   { echo "  [PASS]  $1"; ((PASS++)); }
-fail() { echo "  [FAIL]  $1"; ((FAIL++)); }
+ok()   { echo "  [PASS]  $1"; ((++PASS)); }
+fail() { echo "  [FAIL]  $1"; ((++FAIL)); }
 
 HEADERS=$(curl -sI "$URL")
 
