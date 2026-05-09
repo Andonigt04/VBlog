@@ -112,7 +112,7 @@ jobs:
 
       - name: Install pentest tools
         run: |
-          sudo apt-get install -y nikto gobuster
+          sudo apt-get install -y nikto gobuster sqlmap
           go install github.com/ffuf/ffuf/v2@latest
           go install github.com/hahwul/dalfox/v2@latest
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
