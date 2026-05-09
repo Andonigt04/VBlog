@@ -9,12 +9,11 @@ use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
-    private function requireAdmin(Request $request): ?object
+    private function requireAdmin(Request $request): void
     {
         if (!Auth::check() || Auth::user()->role !== 'admin') {
             abort(response()->json(['error' => 'Forbidden'], 403));
         }
-        return null;
     }
 
     public function fileRead(Request $request)
