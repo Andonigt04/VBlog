@@ -110,6 +110,9 @@ jobs:
       - name: Check security headers
         run: bash dev/check-headers.sh http://localhost
 
+      - name: Install pentest tools
+        run: sudo apt-get install -y nikto
+
       - name: Penetration tests
         # Exit 1 = vulns confirmed (expected in this intentional-vuln app).
         # We capture the output but don't fail the CI step so the report is visible.
