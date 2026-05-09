@@ -11,7 +11,7 @@ WORKDIR /var/www/html
 COPY . .
 
 RUN composer validate
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --optimize-autoloader
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
     chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
