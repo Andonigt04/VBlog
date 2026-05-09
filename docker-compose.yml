@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginx:alpine
+    image: vblog-nginx:local
     build:
       context: nginx
       dockerfile: Dockerfile
