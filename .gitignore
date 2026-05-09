@@ -1,5 +1,6 @@
 *.log
 .DS_Store
+/vendor
 .env
 .env.backup
 .env.production
@@ -17,6 +18,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-composer.lock
 package-lock.json
 vblog
