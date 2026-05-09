@@ -30,6 +30,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5173:5173"
+    environment:
+      CACHE_STORE: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
     volumes:
       - .:/var/www/html
       - vendor_deps:/var/www/html/vendor
@@ -38,7 +42,7 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
-    command: sh -c "php artisan optimize:clear && php artisan migrate:fresh && php artisan db:seed && php-fpm"
+    command: sh -c "php artisan config:clear && php artisan migrate:fresh && php artisan db:seed && php-fpm"
 
   postgresql:
     image: postgres:latest
