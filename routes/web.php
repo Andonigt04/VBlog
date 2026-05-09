@@ -8,12 +8,9 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (Request $request) {
-    return view('home');
-})->name('home');
+Route::get('/', fn() => view('home'))->name('home');
 
 Route::get('/login', function () {
     return view('users.login');
@@ -65,8 +62,11 @@ Route::prefix('users')->group(function () {
 
 // ─── Posts ────────────────────────────────────────────────────────────────────
 Route::prefix('posts')->group(function () {
-    Route::get('/', function () {
-        return view('posts.index')->with('posts', PostController::index(new Request(), 50));
+    Route::get('/', function (Request $request) {
+        $posts = Post::when($request->query('category'), fn($q, $cat) => $q->where('tags', $cat))
+                     ->orderBy('created_at', 'desc')
+                     ->paginate(20);
+        return view('posts.index')->with('posts', $posts);
     })->name('posts.index');
 
     Route::middleware('auth')->group(function () {
@@ -96,8 +96,8 @@ Route::prefix('posts')->group(function () {
 
         $comments = CommentController::index($request, $id, 10);
         $author   = $post->user_id
-            ? (User::find($post->user_id)?->name ?? 'Desconocido')
-            : 'Desconocido';
+            ? (User::find($post->user_id)?->name ?? 'Unknown')
+            : 'Unknown';
 
         return view('posts.show')
             ->with('post', $post)
@@ -151,7 +151,7 @@ Route::get('/old', function () {
 });
 
 Route::get('/internal', function () {
-    abort(403, 'Acceso restringido al personal interno.');
+    abort(403, 'Restricted to internal staff.');
 });
 
 Route::get('/admin', function () {

@@ -19,7 +19,7 @@ export async function apiLogin({ email, passkey, onSuccess, onError }) {
 			onSuccess(data);
 		}
 	} catch (err) {
-		if (onError) onError({ message: 'Error en el login' });
-		else alert('Error en el login');
+		if (onError) onError({ message: 'Login failed' });
+		else alert('Login failed');
 	}
 }

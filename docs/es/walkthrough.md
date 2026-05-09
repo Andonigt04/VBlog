@@ -1,4 +1,4 @@
-# VBlog — Manual del Profesor
+# VBlog — Manual
 
 ## Índice
 
