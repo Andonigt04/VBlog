@@ -17,31 +17,15 @@ sudo docker compose up --build -d
 
 ## Tu Misión
 
-**Escalar desde usuario anónimo → admin**, descubriendo cómo la app expone información, rompe controles de acceso y permite manipular datos.
+**Escalar desde usuario anónimo → root**, siguiendo una cadena de vulnerabilidades.
 
-**Objetivo final:** Acceder a paneles internos y bases de datos que no deberían ser públicos.
+**Objetivo final:** Ejecutar comandos como `root` en el servidor.
 
 ---
 
 ## Fase 0 — Reconocimiento (Sin cuenta)
 
-### Herramientas sugeridas
 
-```bash
-# Ver cabeceras HTTP
-curl -I http://localhost/
-
-# Enumerar rutas con fuerza bruta
-gobuster dir -u http://localhost \
-  -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
-
-# Enumerar subdominios
-gobuster vhost -u http://localhost \
-  -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
-  --append-domain
-```
-
-### ¿Estás atrapado?
 
 <details>
 <summary>Pista 1</summary>
@@ -99,11 +83,6 @@ Los usuarios tienen endpoints de perfil. Busca:
 
 ## Fase 2 — Escalada de Privilegios
 
-### Pregunta clave
-> ¿Puedo cambiar mi rol a algo más poderoso sin que nadie lo verifique?
-
-### ¿Estás atrapado?
-
 <details>
 <summary>Pista 1</summary>
 
@@ -124,11 +103,6 @@ Si logras ser admin, busca una ruta de administración. Usualmente:
 ---
 
 ## Fase 3 — Acceso Interno
-
-### Pregunta clave
-> ¿Hay información sensible en subdominios o archivos internos?
-
-### ¿Estás atrapado?
 
 <details>
 <summary>Pista 1</summary>
@@ -154,19 +128,57 @@ Luego prueba acceder a `http://dev.vblog.local`
 
 ---
 
-## Herramientas de Referencia
+## Fase 3 — Panel de Administración
 
-```bash
-# Hacer peticiones HTTP
-curl -I http://localhost/                    # Ver cabeceras
-curl http://localhost/api/endpoint           # GET
-curl -X POST http://localhost/api/endpoint   # POST
+<details>
+<summary>Pista 1</summary>
 
-# Enumerar rutas
-gobuster dir -u http://localhost \
-  -w /usr/share/wordlists/common.txt
+Prueba enumerar rutas de la API con tu sesión de admin. Hay endpoints bajo `/api/admin/` que no están documentados públicamente.
 
-# Enumerar subdominios
-gobuster vhost -u http://localhost \
-  -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt
-```
+</details>
+
+<details>
+<summary>Pista 2</summary>
+
+Uno de los endpoints acepta un parámetro `path` para leer ficheros del servidor. ¿Qué pasa si pones `../../etc/passwd`?
+
+</details>
+
+<details>
+<summary>Pista 3</summary>
+
+Otro endpoint acepta un `filter` de texto para buscar posts. Prueba a añadir una comilla simple `'` al final del valor. ¿Ves algo inusual en la respuesta?
+
+</details>
+
+<details>
+<summary>Pista 4</summary>
+
+Hay un endpoint de subida de ficheros. El servidor guarda el fichero con el nombre que tú elijas. ¿Qué pasa si subes un fichero `.php`?
+
+</details>
+
+---
+
+## Fase 4 — Escalada al Sistema (root)
+
+<details>
+<summary>Pista 1</summary>
+
+Ejecuta `sudo -l` desde tu shell. ¿Hay algún binario que puedas ejecutar como root?
+
+</details>
+
+<details>
+<summary>Pista 2</summary>
+
+Busca en GTFOBins el binario que encontraste. La técnica de escalada con `sudo` suele usar `-exec`.
+
+</details>
+
+<details>
+<summary>Pista 3</summary>
+
+¿Hay algún binario con el bit `SUID` activo en `/tmp`? Prueba `ls -la /tmp/`.
+
+</details>

@@ -1,55 +1,27 @@
-# VBlog (Vulnerability Blog)
-Not for official use. 
+# VBlog — Aplicación Web Deliberadamente Vulnerable
 
+VBlog es un blog de ciberseguridad construido con Laravel y Docker diseñado como ejercicio práctico de pentesting. Contiene vulnerabilidades reales e intencionadas que el alumno debe descubrir y explotar para escalar desde usuario anónimo hasta root en el servidor.
 
-Laravel:
-*- ¿artículos divididos por tags? pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas
+## Objetivo
 
-*- subdominios oculto (como hacer los)
+Partir sin credenciales y alcanzar ejecución de comandos como `root`, encadenando las vulnerabilidades de la aplicación.
 
-*- roles de usuario
-- endpoints autenticados (limitar el acceso a ciertas rutas)
-- autenticación débil
-- cookies inseguras
-*- headers ausentes
+## Setup
 
-- exposición de información ¿exponer infomacion de users?
-- stored xss (al crear los comentarios que puedas poner xss pero con sinbolos en hexadecimal)
-- api mal protegida (si información de users expuesta se podría categorizar como hecho)
-- IDOR
+**Requisitos:** Docker y Docker Compose.
 
-- rutas(blade):
-  *- /login
-  *- /signup
-  - /dashboard (privada por autenticación; y que solo sea accesible por escalado de privilegios en conjunto a un subdominio (admin.blog.local) + estar autenticado con admin precreado en la db con rol de admin)
-  - /profile (vulnerabilidad al estar logeado como admin al tener esos permisos puedes hacer subir archivo desde el perfil y que hacer un reverse Shell para ganar acceso ; privada por autentizacion)
-  - /admin (sin requerimiento de auth, pero solo accesible desde un subdominio especifico(admin.blog.local); panel de administrador)
-  *- /posts
-  *- /posts/{id} (créate, edit, delete)
+```bash
+git clone https://github.com/Andonigt04/VBlog.git
+cd VBlog
+docker compose up --build -d
+```
 
-- /api(res -> json, status code):
-  - /login
-  - /signup
-  - /posts (GET,POST,PUT)
-  - /posts/{id} (GET,POST,PUT,DELETE) [code, {title, tags[], text}] (texto incluye formato para que en el Blade tenga en cuenta cual es el memo y donde poner fotos, es decir como en un md pones la ruta de la foto y que lo ponga) ¿lista de tags estatica (problablemente)?
-  - /comments (GET,POST,PUT)
-  - /comments (GET,POST,PUT,DELETE)
-  - /me ¿para el Blade de profile? [code, {user (como obj), timestamp}]
-  - /status -> [code, {UP/DOWN, dbConnection, timestamp}]
+La aplicación queda disponible en `http://localhost`.
 
-Docker:
- *- primer contenedor nginx para reverse proxy
- *- segundo contenedor laravel/web/api
- *- tercer contenedor para db (por defecto tiene que tener contenido para no estar vacio al hacer docker compose up --build)
- *- volumen para imagenes y otro para db persistente (imagenes si da tiempo o apetece)
+## Documentación
 
-Tables:
-
- *- User(id, name, email, password, role)
- *- Post(id, title, tags[], context, userId, timestamps)
- *- Comments(id, post_id, user_id, context(imagenes renderizables por url como en los posts), timestamps)
-
-Enums:
-
- *- tags[pagina de noticias de vulnerabilidades, análisis técnicos, herramientas, buenas practicas]
- *- role[client, author, admin]
+| Documento | Descripción |
+|---|---|
+| [docs/memo.md](docs/memo.md) | Manual del alumno — fases y pistas progresivas |
+| [docs/walkthrough.md](docs/walkthrough.md) | Manual del profesor — vulnerabilidades, explotación y parches |
+| [docs/arquitecture.md](docs/arquitecture.md) | Arquitectura Docker y superficie de ataque |

