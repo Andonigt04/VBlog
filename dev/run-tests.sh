@@ -53,7 +53,8 @@ trap cleanup EXIT
 # Ensure .env exists with a generated APP_KEY before building
 if [ ! -f .env ]; then
     cp .env.example .env
-    php -r "echo 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL;" >> .env
+    KEY=$(php -r "echo base64_encode(random_bytes(32));")
+    sed -i "s|^APP_KEY=.*|APP_KEY=base64:$KEY|" .env
 fi
 
 docker compose up --build -d

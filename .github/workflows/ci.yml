@@ -68,8 +68,8 @@ jobs:
       - name: Prepare .env
         run: |
           cp .env.example .env
-          # Generate a random APP_KEY so Laravel can encrypt cookies/sessions
-          php -r "echo 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL;" >> .env
+          KEY=$(php -r "echo base64_encode(random_bytes(32));")
+          sed -i "s|^APP_KEY=.*|APP_KEY=base64:$KEY|" .env
 
       - name: Build and start stack
         run: docker compose up --build -d
