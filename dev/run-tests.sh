@@ -38,7 +38,7 @@ fi
 
 # ── 3. PHPUnit ────────────────────────────────────────────────────────────
 step "PHPUnit (unit + feature)"
-if php artisan test; then
+if php artisan config:clear && php artisan test; then
     pass "All tests passed"
 else
     fail "Test failures"

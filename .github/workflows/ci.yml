@@ -56,7 +56,9 @@ jobs:
           cp .env.example .env
           php artisan key:generate
       - name: Run tests
-        run: php artisan test
+        run: |
+          php artisan config:clear
+          php artisan test
 
   # ── 4. Docker build + HTTP integration + security headers ──────────────────
   docker:
@@ -70,6 +72,9 @@ jobs:
           cp .env.example .env
           KEY=$(php -r "echo base64_encode(random_bytes(32));")
           sed -i "s|^APP_KEY=.*|APP_KEY=base64:$KEY|" .env
+          # Override DB to match docker-compose PostgreSQL service
+          sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|" .env
+          printf '\nDB_HOST=postgresql\nDB_PORT=5432\nDB_DATABASE=vblog\nDB_USERNAME=vblog_adm\nDB_PASSWORD=uireh34t34\n' >> .env
 
       - name: Build and start stack
         run: docker compose up --build -d
@@ -83,8 +88,8 @@ jobs:
               break
             fi
             if [ "$i" -eq 36 ]; then
-              echo "Timeout — dumping logs"
-              docker compose logs laravel
+              echo "Timeout — dumping container logs:"
+              docker compose logs
               exit 1
             fi
             echo "  attempt $i/36 ..."
