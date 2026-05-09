@@ -93,10 +93,10 @@ class UserController extends Controller
         try {
             $request->validate([
                 'email' => 'required|email',
-                'passkey' => 'required',  // FIX: era 'password', el form manda 'passkey'
+                'passkey' => 'required',
             ]);
 
-            $credentials = ['email' => $request->email, 'password' => $request->passkey];  // FIX
+            $credentials = ['email' => $request->email, 'password' => $request->passkey];
 
             if (!Auth::attempt($credentials)) {
                 return $request->wantsJson() || $request->is('api/*')

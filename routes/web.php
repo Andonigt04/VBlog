@@ -69,7 +69,6 @@ Route::prefix('posts')->group(function () {
         return view('posts.index')->with('posts', PostController::index(new Request(), 50));
     })->name('posts.index');
 
-    // Rutas estáticas ANTES del wildcard /{id}
     Route::middleware('auth')->group(function () {
         Route::get('create', function () {
             return view('posts.create');
@@ -90,7 +89,6 @@ Route::prefix('posts')->group(function () {
         Route::delete('destroy/{id}', [PostController::class, 'destroy'])->name('posts.destroy');
     });
 
-    // Wildcard al final para no interceptar las rutas anteriores
     Route::get('/{id}', function (Request $request, $id) {
         $post = PostController::show($request, $id);
 
@@ -107,9 +105,6 @@ Route::prefix('posts')->group(function () {
             ->with('author', $author);
     })->name('posts.show');
 });
-
-// ─── Rutas ocultas ───────────────────────────────────────────────────────────
-// No enlazadas desde la interfaz — descubribles por enumeración
 
 Route::get('/backup', function () {
     $content = <<<TXT

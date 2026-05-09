@@ -96,7 +96,6 @@ class CommentController extends Controller
         try {
             $comment = Comment::findOrFail($id);
 
-            // Solo el autor o admin pueden editar
             if ($comment->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
                 return $request->wantsJson() || $request->is('api/*')
                     ? response()->json(['status' => 403, 'message' => 'No autorizado'], 403)
@@ -132,7 +131,6 @@ class CommentController extends Controller
         try {
             $comment = Comment::findOrFail($id);
 
-            // Solo el autor o admin pueden borrar
             if ($comment->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
                 return $request->wantsJson() || $request->is('api/*')
                     ? response()->json(['status' => 403, 'message' => 'No autorizado'], 403)

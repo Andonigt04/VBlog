@@ -42,9 +42,9 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('delete')->group(function () {
-        Route::delete('/user/{id}', [UserController::class, 'destroy']);      // FIX: era 'delete'
-        Route::delete('/post/{id}', [PostController::class, 'destroy']);      // FIX: era 'delete'
-        Route::delete('/comment/{id}', [CommentController::class, 'destroy']); // FIX: era 'delete'
+        Route::delete('/user/{id}', [UserController::class, 'destroy']);
+        Route::delete('/post/{id}', [PostController::class, 'destroy']);
+        Route::delete('/comment/{id}', [CommentController::class, 'destroy']);
     });
 
     Route::prefix('admin')->group(function () {

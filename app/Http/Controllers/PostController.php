@@ -89,7 +89,6 @@ class PostController extends Controller
         try {
             $post = Post::findOrFail($id);
 
-            // Solo el autor o admin pueden editar
             if ($post->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
                 return $request->wantsJson() || $request->is('api/*')
                     ? response()->json(['status' => 403, 'message' => 'No autorizado'], 403)
@@ -123,7 +122,6 @@ class PostController extends Controller
         try {
             $post = Post::findOrFail($id);
 
-            // Solo el autor o admin pueden borrar
             if ($post->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
                 return $request->wantsJson() || $request->is('api/*')
                     ? response()->json(['status' => 403, 'message' => 'No autorizado'], 403)
