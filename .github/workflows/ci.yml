@@ -13,7 +13,7 @@ jobs:
     name: Composer Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -28,7 +28,7 @@ jobs:
     name: Static Analysis (PHPStan)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -43,7 +43,7 @@ jobs:
     name: PHPUnit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -65,7 +65,7 @@ jobs:
     name: Docker Integration & Headers
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - name: Prepare .env
         run: |
@@ -118,9 +118,8 @@ jobs:
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
 
       - name: Penetration tests
-        # Exit 1 = vulns confirmed (expected in this intentional-vuln app).
-        # We capture the output but don't fail the CI step so the report is visible.
-        run: bash dev/pentest.sh http://localhost || true
+        # Exit 0 = all expected vulns confirmed. Exit 1 = a vuln was unexpectedly patched.
+        run: bash dev/pentest.sh http://localhost
 
       - name: Tear down
         if: always()
