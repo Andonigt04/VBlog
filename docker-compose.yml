@@ -7,6 +7,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    security_opt:
+      - label:disable
     volumes:
       - .:/var/www/html
       - build_assets:/var/www/html/public/build
@@ -23,6 +25,8 @@ services:
 
   dev_panel:
     image: nginx:alpine
+    security_opt:
+      - label:disable
     volumes:
       - ./dev/public:/usr/share/nginx/html:ro
       - ./dev/nginx.conf:/etc/nginx/conf.d/default.conf
@@ -39,6 +43,8 @@ services:
       CACHE_STORE: file
       SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
+    security_opt:
+      - label:disable
     volumes:
       - .:/var/www/html
       - vendor_deps:/var/www/html/vendor
@@ -49,7 +55,7 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
-    command: sh -c "chmod 777 /var/www/html/public/avatars && rm -f bootstrap/cache/*.php && php artisan migrate:fresh && php artisan db:seed && php-fpm"
+    command: sh -c "chmod 777 /var/www/html/public/avatars || true && rm -f bootstrap/cache/*.php && php artisan migrate:fresh && php artisan db:seed && php-fpm"
 
   postgresql:
     image: postgres:latest
