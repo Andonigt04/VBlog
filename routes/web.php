@@ -111,12 +111,6 @@ Route::get('/backup', function () {
 # VBlog — Backup de configuracion
 # Generado: 2026-04-28 03:00:01
 
-[credentials]
-editor_user=editor01
-editor_pass=editor01pass
-admin_email=adm01@vblog.local
-admin_pass=adm01local
-
 [database]
 host=postgresql
 port=5432

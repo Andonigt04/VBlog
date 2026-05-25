@@ -2,6 +2,8 @@
 
 VBlog es un blog de ciberseguridad construido con Laravel y Docker diseñado como ejercicio práctico de pentesting. Contiene vulnerabilidades reales e intencionadas que el alumno debe descubrir y explotar para escalar desde usuario anónimo hasta root en el servidor.
 
+<img src="Screenshot_20260525_092818.png" />
+
 ## Objetivo
 
 Partir sin credenciales y alcanzar ejecución de comandos como `root`, encadenando las vulnerabilidades de la aplicación.
